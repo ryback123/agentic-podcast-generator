@@ -57,7 +57,7 @@ Plan:
 - Exactly {k} segments whose minutes add up to {minutes}: an opening (hook, then the speakers introduce themselves; about 1 minute), {main} main segments, and a closing (recap and one memorable takeaway; about 1 minute). Each main segment has one clear goal and builds on the one before.
 - For each main segment, one to three research questions whose answers (facts, numbers, real examples, stories) would make the segment concrete and correct. The opening and closing have no questions.
 
-Write the plan in English, except the title, which is in {lang}.
+Write the plan in English, except the title, which is in {lang} ({script} script).
 Reply with only this JSON:
 {{"title": str, "audience": str, "format": str,
  "speakers": [{{"name": str, "role": str, "knowledge": str, "style": str}}],
@@ -73,7 +73,7 @@ Your recent actions:
 {history}
 
 Tools:
-- search {{"query": str, "lang": str}}: searches Wikipedia. {lang_note}
+- search {{"query": str, "lang": str}}: searches Wikipedia; query is 2-4 words (a topic name, not a question). {lang_note}
 - read {{"ids": [str]}}: reads up to three search results by id (like "r3"); facts relevant to the questions are extracted and saved.
 - done {{"reason": str}}: stops research. Use it when every question has at least two facts, or when more searching is not helping.
 
@@ -215,7 +215,7 @@ def produce(ep, rng):
     fmt = rng.choice([f for f in FORMATS if n >= 3 or "panel" not in f])
     hook = rng.choice(HOOKS)
     prompt = PRODUCER.format(topic=r["topic"], notes=r["description"] or "none", lang=LANGS[r["lang"]][0],
-                             lang_rule=lang_rule(ep), n=n, minutes=minutes, fmt=fmt, hook=hook, k=main + 2, main=main,
+                             script=LANGS[r["lang"]][1], lang_rule=lang_rule(ep), n=n, minutes=minutes, fmt=fmt, hook=hook, k=main + 2, main=main,
                              extra_role=", and someone who pushes back or brings a different view" if n >= 3 else "")
     for _ in range(3):
         plan = llm.chat_json(prompt, "producer", temperature=0.9)
@@ -298,11 +298,12 @@ def research(ep, max_steps):
             if not ids:
                 obs = "nothing to read: unknown or already-read ids"
             else:
-                read.update(results[i]["id"] for i in ids)
                 with ThreadPoolExecutor(len(ids)) as ex:
                     outs = list(ex.map(lambda i: take_notes(ep, results[i]), ids))
                 parts = []
                 for i, (facts, err) in zip(ids, outs):
+                    if not err:  # failed reads stay retryable
+                        read.add(results[i]["id"])
                     for f in facts:
                         f["id"] = f"F{len(ep['facts']) + 1}"
                         ep["facts"].append(f)

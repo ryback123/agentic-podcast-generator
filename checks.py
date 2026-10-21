@@ -116,9 +116,10 @@ def check_segment(turns, bad, lang, code_mix, budget_chars, history):
         if share < lo:
             issues.append(f"Only {share:.0%} of words are English; target code-mixing is {code_mix} "
                           f"({lo:.0%}-{hi:.0%}). Use English words where speakers naturally would.")
-        elif share > hi:
-            issues.append(f"{share:.0%} of words are English; target code-mixing is {code_mix} "
-                          f"({lo:.0%}-{hi:.0%}). Use more {name}.")
+        elif share > hi:  # usually romanized {name}, not too much English
+            issues.append(f"{share:.0%} of words are in Latin letters; the target for {code_mix} code-mixing is "
+                          f"{lo:.0%}-{hi:.0%}. Write every {name} word in {script} script (only English words stay "
+                          f"in Latin letters), and use more {name}.")
 
     n = sum(len(tx) for _, tx in turns)
     if not 0.75 * budget_chars <= n <= 1.3 * budget_chars:
@@ -150,6 +151,8 @@ if __name__ == "__main__":
 
     t = "यह बहुत अच्छा है और सबके लिए सरल है"
     assert any("English" in i for i in check_segment([("ARJUN", t)], [], "hi", "medium", len(t), []))
+    t = "Wahi toh mystery hai, aaj hum samjhenge"  # romanized Hindi must be called out as a script problem
+    assert any("Devanagari script" in i for i in check_segment([("ARJUN", t)], [], "hi", "medium", len(t), []))
 
     t = "வணக்கம் நண்பர்களே இது payments பற்றி"
     assert any("wrong script" in i for i in check_segment([("ARJUN", t)], [], "hi", "heavy", len(t), []))

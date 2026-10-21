@@ -2,17 +2,23 @@
 later by keeping the same two functions and result shape."""
 import json
 import re
+import threading
 import time
 import urllib.error
 import urllib.parse
 import urllib.request
 
 _UA = {"User-Agent": "podcast-agent/0.1 (course project)"}
+# ponytail: per-process throttle for Wikipedia's anonymous limits; drop it with a paid search API
+_MIN_INTERVAL, _last, _lock = 1.0, [0.0], threading.Lock()
 
 
 def _api(lang, **params):
     url = f"https://{lang}.wikipedia.org/w/api.php?" + urllib.parse.urlencode({**params, "format": "json"})
     for attempt in range(4):
+        with _lock:
+            time.sleep(max(0.0, _last[0] + _MIN_INTERVAL - time.time()))
+            _last[0] = time.time()
         try:
             with urllib.request.urlopen(urllib.request.Request(url, headers=_UA), timeout=20) as r:
                 return json.load(r)
