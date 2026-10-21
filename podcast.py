@@ -1,0 +1,443 @@
+"""Agentic podcast script generator.
+
+  producer   plans cast + segments + research questions
+  researcher tool loop (search / read / done) that builds a sourced fact sheet
+  writer     writes each segment;  critics (code checks, fact-checker, editor) send it back until clean
+
+  python podcast.py --topic "How UPI payments work" --lang hi --description "for class 8 students"
+
+Every model call goes through llm.py (env LLM_BASE_URL / LLM_MODEL / LLM_API_KEY).
+"""
+import argparse
+import json
+import random
+import re
+import subprocess
+import time
+from concurrent.futures import ThreadPoolExecutor
+from pathlib import Path
+
+import llm
+from checks import BANNED_OPENERS, LANGS, check_segment, chars_per_min, parse_turns
+from search import read_page, web_search
+
+REPO = Path(__file__).resolve().parent
+RUNS = Path("/projects/data/ttsteam/nikhil/runs/podcast_agent/runs")
+T0 = time.time()
+
+CODE_MIX = {
+    "light": "Mostly {lang}; English only for technical terms that people normally say in English.",
+    "medium": "Natural everyday code-mixing: {lang} sentences with common English words and short phrases, "
+              "the way urban {lang} speakers talk.",
+    "heavy": "Heavy code-mixing: many English words and phrases inside {lang} sentences, switching freely.",
+}
+FORMATS = [
+    "two friends chatting; one knows the topic well, the other is curious",
+    "a host interviewing an expert guest",
+    "co-hosts exploring the topic together, sometimes disagreeing",
+    "myth-busting: each main segment tests a common belief",
+    "story-led: each main segment opens with a real example or case",
+    "a panel with different viewpoints",
+]
+HOOKS = ["a surprising fact", "a short story or scene", "a question listeners have probably wondered about",
+         "a common misconception", "a relatable everyday situation"]
+
+# ---------------------------------------------------------------- prompts
+PRODUCER = """You are the producer of an audio podcast. Plan one episode.
+
+Topic: {topic}
+Notes from the requester: {notes}
+Language: {lang}. {lang_rule}
+Number of speakers: exactly {n}
+Target length: {minutes} minutes
+
+Plan:
+- Cast: exactly {n} speakers. For each: a first name common among {lang} speakers, written in Latin letters only (it is the speaker label); a role (for example host, co-host, expert, guest, skeptic); what they know about the topic; how they talk. Give the cast useful contrast: someone who explains and someone who asks what the listener would ask{extra_role}. Match the audience level in the requester's notes; with no level given, aim at curious adults with no background.
+- Format for this episode: {fmt}. Opening hook: {hook}.
+- Exactly {k} segments whose minutes add up to {minutes}: an opening (hook, then the speakers introduce themselves; about 1 minute), {main} main segments, and a closing (recap and one memorable takeaway; about 1 minute). Each main segment has one clear goal and builds on the one before.
+- For each main segment, one to three research questions whose answers (facts, numbers, real examples, stories) would make the segment concrete and correct. The opening and closing have no questions.
+
+Write the plan in English, except the title, which is in {lang}.
+Reply with only this JSON:
+{{"title": str, "audience": str, "format": str,
+ "speakers": [{{"name": str, "role": str, "knowledge": str, "style": str}}],
+ "segments": [{{"title": str, "goal": str, "minutes": number, "questions": [str]}}]}}"""
+
+RESEARCHER = """You are the research agent for the podcast episode "{title}" (audience: {audience}).
+Find facts that answer the research questions. Facts are saved only from pages you read; do not rely on memory.
+
+Research questions and facts found so far:
+{coverage}
+
+Your recent actions:
+{history}
+
+Tools:
+- search {{"query": str, "lang": str}}: searches Wikipedia. {lang_note}
+- read {{"ids": [str]}}: reads up to three search results by id (like "r3"); facts relevant to the questions are extracted and saved.
+- done {{"reason": str}}: stops research. Use it when every question has at least two facts, or when more searching is not helping.
+
+Step {step} of {max_steps}. Prefer reading promising results over searching again. Wikipedia search works best with short topic names, not full questions.
+Reply with only JSON: {{"thought": "<one sentence>", "tool": "search" | "read" | "done", "args": {{...}}}}"""
+
+NOTES = """Extract facts from this page that help answer the research questions.
+
+Research questions:
+{questions}
+
+Page: {title}
+---
+{text}
+---
+Each fact is one self-contained English sentence that keeps numbers, names, and dates exactly as on the page. Use only what the page says. Skip anything that does not help answer a question. At most 8 facts.
+Reply with only JSON: {{"facts": [{{"q": "Q1", "fact": str}}]}}"""
+
+CONTEXT = """Episode: "{title}". Format: {format}. Audience: {audience}.
+Cast:
+{cast}
+
+Outline:
+{outline}
+
+This segment: "{seg_title}". Goal: {goal}
+Length: about {chars} characters of dialogue (about {minutes} minutes spoken), roughly {t_lo}-{t_hi} turns.
+{position}
+
+Facts to use (use what fits; never mention fact ids or sources):
+{facts}
+Do not state any fact, number, name, or date that is not in this list or common knowledge.
+{prev}
+Language: {lang}. {lang_rule}
+Rules:
+- Write every number, date, unit, and symbol as spoken words (no digits, %, /, & and so on).
+- No markdown, stage directions, sound effects, or emojis.
+- Short turns: one to three sentences, sometimes just a quick reaction. Vary turn lengths.
+- Speakers react to what was just said, ask follow-up questions, sometimes interrupt or disagree, and use concrete examples and analogies that suit the audience.
+- Do not start turns with stock phrases ({banned}) and do not reuse the same reaction within the episode.
+- Speakers never say their own name."""
+
+WRITER = """You are writing one segment of a podcast episode as spoken dialogue, not an essay.
+
+{ctx}
+
+Output only dialogue lines, one turn per line, as NAME: text, using only these names: {names}."""
+
+REVISE = """You are revising one segment of a podcast episode.
+
+{ctx}
+
+Current draft:
+{draft}
+
+Reviewers found these problems:
+{issues}
+
+Rewrite the segment so every problem is fixed; keep what works. Output the full revised segment only, one turn per line, as NAME: text, using only these names: {names}."""
+
+FACTCHECK = """You are a strict fact-checker for one segment of a podcast for {audience}.
+Check every factual claim in the segment (numbers, dates, names, how things work, causes and effects) against the facts list. Opinions, questions, and everyday common knowledge are fine.
+
+Facts:
+{facts}
+
+Segment:
+{numbered}
+
+Report each claim that contradicts the facts, and each specific fact (a number, date, name, or technical detail) that the facts list does not support.
+Reply with only JSON: {{"issues": [{{"line": int, "claim": str, "problem": str, "fix": str}}]}} (an empty list if everything is supported)."""
+
+EDITOR = """You are the story editor of a podcast for {audience}. Review one segment and report only concrete problems of these kinds:
+1. Level: too advanced or too childish for the audience, or jargon left unexplained.
+2. Speech: lines that sound written rather than spoken, lecture-like monologues, or unnatural language. Target language: {lang}. {lang_rule}
+3. Characters: a speaker acting outside their role or knowledge. Cast:
+{cast}
+4. Flow: the segment misses its goal ("{goal}"), repeats earlier segments, or does not follow from the previous segment.
+
+Earlier segments covered:
+{covered}
+
+Segment:
+{numbered}
+
+Reply with only JSON: {{"issues": [{{"line": int, "problem": str, "fix": str}}]}} with at most five issues, most important first; an empty list if the segment works."""
+
+
+# ---------------------------------------------------------------- helpers
+def log(ep, agent, event, **info):
+    t = round(time.time() - T0, 1)
+    ep["log"].append({"t": t, "agent": agent, "event": event, **info})
+    print(f"[{t:7.1f}s] {agent}: {event}", flush=True)
+
+
+def lang_rule(ep):
+    lang, code_mix = ep["request"]["lang"], ep["request"]["code_mix"]
+    name, script, _ = LANGS[lang]
+    if lang == "en":
+        return "Natural spoken English, the way Indian podcast hosts talk."
+    return CODE_MIX[code_mix].format(lang=name) + f" Write {name} words in {script} script and English words in Latin script."
+
+
+def cast_text(plan):
+    return "\n".join(f"- {s['name']} ({s['role']}): knows {s['knowledge']}; talks {s['style']}" for s in plan["speakers"])
+
+
+def fact_lines(facts):
+    return "\n".join(f"{f['id']}: {f['fact']}" for f in facts) or "(none)"
+
+
+def numbered(turns):
+    return "\n".join(f"{k}. {sp}: {tx}" for k, (sp, tx) in enumerate(turns, 1))
+
+
+# ---------------------------------------------------------------- producer
+def validate_plan(plan, n, minutes):
+    names = [s.get("name", "") for s in plan.get("speakers", [])]
+    if len(names) != n:
+        return f"needs exactly {n} speakers, got {len(names)}"
+    if not all(re.fullmatch(r"[A-Za-z]+", x) for x in names) or len({x.upper() for x in names}) != n:
+        return "speaker names must be distinct single first names in Latin letters"
+    segs = plan.get("segments", [])
+    if len(segs) < 3:
+        return "needs an opening, main segments, and a closing"
+    total = sum(float(s.get("minutes", 0)) for s in segs)
+    if abs(total - minutes) > 1.5:
+        return f"segment minutes add up to {total}, not {minutes}"
+    return None
+
+
+def produce(ep, rng):
+    r = ep["request"]
+    n, minutes = r["speakers"], r["minutes"]
+    main = max(2, round((minutes - 2) / 2))
+    fmt = rng.choice([f for f in FORMATS if n >= 3 or "panel" not in f])
+    hook = rng.choice(HOOKS)
+    prompt = PRODUCER.format(topic=r["topic"], notes=r["description"] or "none", lang=LANGS[r["lang"]][0],
+                             lang_rule=lang_rule(ep), n=n, minutes=minutes, fmt=fmt, hook=hook, k=main + 2, main=main,
+                             extra_role=", and someone who pushes back or brings a different view" if n >= 3 else "")
+    for _ in range(3):
+        plan = llm.chat_json(prompt, "producer", temperature=0.9)
+        err = validate_plan(plan, n, minutes)
+        if not err:
+            break
+        log(ep, "producer", f"plan rejected: {err}")
+        prompt += f"\n\nYour previous plan was rejected: {err}. Fix that."
+    else:
+        raise RuntimeError(f"producer could not make a valid plan: {err}")
+    for s in plan["speakers"]:
+        s["name"] = s["name"].upper()
+    plan["hook"] = hook
+    q = 0
+    for seg in plan["segments"]:
+        seg["qids"] = []
+        for text in seg.get("questions") or []:
+            q += 1
+            ep["questions"][f"Q{q}"] = text
+            seg["qids"].append(f"Q{q}")
+    ep["plan"] = plan
+    log(ep, "producer", f"plan: {plan['title']!r}, {len(plan['segments'])} segments, {q} research questions, "
+                        f"cast {[s['name'] for s in plan['speakers']]}", plan=plan)
+
+
+# ---------------------------------------------------------------- researcher
+def take_notes(ep, hit):
+    try:
+        text = read_page(hit["id"])
+    except (OSError, ValueError, KeyError) as e:  # tool error is reported back to the agent
+        return [], f"could not read: {e}"
+    qs = "\n".join(f"{q}: {t}" for q, t in ep["questions"].items())
+    out = llm.chat_json(NOTES.format(questions=qs, title=hit["title"], text=text), "notes", temperature=0.2)
+    facts = []
+    for f in out.get("facts", []):
+        qid = str(f.get("q", "")).strip()
+        qid = qid if qid.startswith("Q") else f"Q{qid}"
+        if qid in ep["questions"] and f.get("fact"):
+            facts.append({"q": qid, "fact": f["fact"], "source": hit["title"], "url": hit["url"]})
+    return facts, None
+
+
+def research(ep, max_steps):
+    plan, qs = ep["plan"], ep["questions"]
+    name, _, wiki = LANGS[ep["request"]["lang"]]
+    lang_note = (f'lang is "en" or "{wiki}" ({name} Wikipedia); English usually has more detail.'
+                 if wiki and wiki != "en" else 'lang must be "en".')
+    results, read, history = {}, set(), []
+    for step in range(1, max_steps + 1):
+        cov = {q: sum(f["q"] == q for f in ep["facts"]) for q in qs}
+        if all(c >= 2 for c in cov.values()):
+            log(ep, "researcher", "stop: every question has 2+ facts")
+            return
+        prompt = RESEARCHER.format(
+            title=plan["title"], audience=plan["audience"], lang_note=lang_note, step=step, max_steps=max_steps,
+            coverage="\n".join(f"{q} [{cov[q]} facts] {t}" for q, t in qs.items()),
+            history="\n".join(history[-8:]) or "none yet")
+        act = llm.chat_json(prompt, "researcher", temperature=0.3, max_tokens=500)
+        tool, args = act.get("tool"), act.get("args") or {}
+        log(ep, "researcher", f"{tool} {json.dumps(args, ensure_ascii=False)}", thought=act.get("thought"))
+        if tool == "done":
+            return
+        if tool == "search":
+            try:
+                hits = web_search(args.get("query", ""), args.get("lang", "en"))
+                lines = []
+                for h in hits:
+                    rid = f"r{len(results) + 1}"
+                    results[rid] = h
+                    lines.append(f"   [{rid}] {h['title']}: {h['snippet'][:160]}")
+                obs = f"{len(hits)} results\n" + "\n".join(lines) if hits else "no results"
+            except (OSError, ValueError, KeyError) as e:
+                obs = f"search failed: {e}"
+        elif tool == "read":
+            ids = args.get("ids") or [args.get("id")]
+            ids = [i for i in ids if i in results and results[i]["id"] not in read][:3]
+            if not ids:
+                obs = "nothing to read: unknown or already-read ids"
+            else:
+                read.update(results[i]["id"] for i in ids)
+                with ThreadPoolExecutor(len(ids)) as ex:
+                    outs = list(ex.map(lambda i: take_notes(ep, results[i]), ids))
+                parts = []
+                for i, (facts, err) in zip(ids, outs):
+                    for f in facts:
+                        f["id"] = f"F{len(ep['facts']) + 1}"
+                        ep["facts"].append(f)
+                    got = sorted({f["q"] for f in facts})
+                    parts.append(f"[{i}] {results[i]['title']}: " +
+                                 (err or (f"added {len(facts)} facts ({', '.join(got)})" if facts else "nothing relevant")))
+                obs = "; ".join(parts)
+        else:
+            obs = f"unknown tool {tool!r}; use search, read, or done"
+        history.append(f"{step}. {tool} {json.dumps(args, ensure_ascii=False)} -> {obs}")
+    log(ep, "researcher", "stop: step budget used")
+
+
+# ---------------------------------------------------------------- writer + critics
+def segment_context(ep, i):
+    plan, segs = ep["plan"], ep["plan"]["segments"]
+    seg, lang = segs[i], ep["request"]["lang"]
+    chars = int(float(seg["minutes"]) * chars_per_min(lang))
+    outline = "\n".join(f"{k + 1}. {s['title']}: {s['goal']}" +
+                        (" (done)" if k < i else "  <- THIS SEGMENT" if k == i else " (later)")
+                        for k, s in enumerate(segs))
+    if i == 0:
+        position = (f"This is the opening. Start with the hook ({plan['hook']}), then the speakers introduce "
+                    "themselves naturally and say what the episode will cover.")
+        facts = [next(f for f in ep["facts"] if f["q"] == q) for q in ep["questions"]
+                 if any(f["q"] == q for f in ep["facts"])][:6]
+    elif i == len(segs) - 1:
+        position = ("This is the closing. Recap the main ideas in a fresh way (do not list them), "
+                    "give one memorable takeaway, and sign off.")
+        facts = []
+    else:
+        position = "Continue directly from the previous segment: no greetings, no re-introductions, no summary at the end."
+        facts = [f for f in ep["facts"] if f["q"] in seg["qids"]]
+    prev = segs[i - 1].get("turns", [])[-6:] if i else []
+    prev = ("\nLast lines of the previous segment:\n" + "\n".join(f"{sp}: {tx}" for sp, tx in prev) + "\n") if prev else ""
+    ctx = CONTEXT.format(title=plan["title"], format=plan["format"], audience=plan["audience"], cast=cast_text(plan),
+                         outline=outline, seg_title=seg["title"], goal=seg["goal"], chars=chars, minutes=seg["minutes"],
+                         t_lo=max(4, int(chars / 160)), t_hi=max(6, int(chars / 80)), position=position,
+                         facts=fact_lines(facts), prev=prev, lang=LANGS[lang][0], lang_rule=lang_rule(ep),
+                         banned=", ".join(f'"{b}"' for b in BANNED_OPENERS))
+    return ctx, chars
+
+
+def review(ep, i, text, budget):
+    plan, segs, r = ep["plan"], ep["plan"]["segments"], ep["request"]
+    names = [s["name"] for s in plan["speakers"]]
+    turns, bad = parse_turns(text, names)
+    history = [tuple(t) for s in segs[:i] for t in s.get("turns", [])]
+    issues = check_segment(turns, bad, r["lang"], r["code_mix"], budget, history)
+    if not turns:
+        return turns, issues
+    num = numbered(turns)
+    fc = FACTCHECK.format(audience=plan["audience"], facts=fact_lines(ep["facts"]), numbered=num)
+    ed = EDITOR.format(audience=plan["audience"], lang=LANGS[r["lang"]][0], lang_rule=lang_rule(ep),
+                       cast=cast_text(plan), goal=segs[i]["goal"], numbered=num,
+                       covered="\n".join(f"- {s['title']}: {s['goal']}" for s in segs[:i]) or "(none)")
+    with ThreadPoolExecutor(2) as ex:
+        jobs = [ex.submit(llm.chat_json, p, f"{who}:{i + 1}", temperature=0.2) for who, p in (("factcheck", fc), ("editor", ed))]
+        for who, job in zip(("fact-check", "editor"), jobs):
+            for x in job.result().get("issues") or []:
+                issues.append(f"Line {x.get('line', '?')} ({who}): {x.get('problem', '')} Fix: {x.get('fix', '')}")
+    return turns, issues
+
+
+def write_segment(ep, i, max_revisions):
+    seg = ep["plan"]["segments"][i]
+    names = ", ".join(s["name"] for s in ep["plan"]["speakers"])
+    ctx, budget = segment_context(ep, i)
+    text = llm.chat(WRITER.format(ctx=ctx, names=names), f"writer:{i + 1}", temperature=0.8)
+    for rnd in range(max_revisions + 1):
+        turns, issues = review(ep, i, text, budget)
+        log(ep, "critics", f"segment {i + 1} round {rnd}: {len(issues)} issues", issues=issues)
+        if not issues or rnd == max_revisions:
+            break
+        text = llm.chat(REVISE.format(ctx=ctx, draft=text, issues="\n".join(f"- {x}" for x in issues), names=names),
+                        f"writer:{i + 1}:rev{rnd + 1}", temperature=0.6)
+    seg["turns"], seg["open_issues"] = turns, issues
+
+
+# ---------------------------------------------------------------- output
+def finish(ep, run):
+    plan, lang = ep["plan"], ep["request"]["lang"]
+    turns = [{"speaker": sp, "text": tx} for s in plan["segments"] for sp, tx in s["turns"]]
+    chars = sum(len(t["text"]) for t in turns)
+    share = {s["name"]: round(sum(len(t["text"]) for t in turns if t["speaker"] == s["name"]) / chars, 2)
+             for s in plan["speakers"]}
+    sources = sorted({(f["source"], f["url"]) for f in ep["facts"]})
+    ep["stats"] = {"turns": len(turns), "chars": chars, "est_minutes": round(chars / chars_per_min(lang), 1),
+                   "speaker_share": share, "facts": len(ep["facts"]),
+                   "open_issues": sum(len(s["open_issues"]) for s in plan["segments"]),
+                   "llm_calls": sum(1 for _ in open(llm.LOG)), "wall_minutes": round((time.time() - T0) / 60, 1)}
+    (run / "script.json").write_text(json.dumps({
+        "title": plan["title"], "language": lang, "speakers": plan["speakers"], "turns": turns,
+        "sources": [{"title": t, "url": u} for t, u in sources]}, ensure_ascii=False, indent=1))
+    lines = [plan["title"], cast_text(plan), ""]
+    for k, s in enumerate(plan["segments"], 1):
+        lines += [f"## {k}. {s['title']}"] + [f"{sp}: {tx}" for sp, tx in s["turns"]] + [""]
+    (run / "script.txt").write_text("\n".join(lines))
+    save(ep, run)
+    log(ep, "done", json.dumps(ep["stats"], ensure_ascii=False))
+
+
+def save(ep, run):
+    (run / "episode.json").write_text(json.dumps(ep, ensure_ascii=False, indent=1))
+
+
+def main():
+    ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
+    ap.add_argument("--topic", required=True)
+    ap.add_argument("--description", default="", help="free text: audience level, tone, angle")
+    ap.add_argument("--lang", default="en", choices=LANGS)
+    ap.add_argument("--speakers", type=int, default=2)
+    ap.add_argument("--minutes", type=float, default=12)
+    ap.add_argument("--code-mix", default="medium", choices=CODE_MIX)
+    ap.add_argument("--max-research-steps", type=int, default=20)
+    ap.add_argument("--max-revisions", type=int, default=2)
+    ap.add_argument("--seed", type=int)
+    ap.add_argument("--out", type=Path, default=RUNS)
+    a = ap.parse_args()
+    if a.speakers < 2:
+        ap.error("--speakers must be at least 2")
+    a.seed = a.seed if a.seed is not None else random.randrange(10**6)
+    slug = re.sub(r"[^a-z0-9]+", "_", a.topic.lower()).strip("_")[:40] or "episode"
+    run = a.out / f"{time.strftime('%Y%m%d_%H%M%S')}_{a.lang}_{slug}"
+    run.mkdir(parents=True)
+    llm.LOG = run / "calls.jsonl"
+    git = lambda *c: subprocess.run(["git", "-C", str(REPO), *c], capture_output=True, text=True).stdout.strip()  # noqa: E731
+    ep = {"request": {k: str(v) if isinstance(v, Path) else v for k, v in vars(a).items()},
+          "provenance": {"commit": git("rev-parse", "HEAD"), "dirty": bool(git("status", "--porcelain")),
+                         "model": llm.MODEL, "base_url": str(llm._client.base_url)},
+          "plan": None, "questions": {}, "facts": [], "log": []}
+    print(f"run dir: {run}", flush=True)
+    produce(ep, random.Random(a.seed))
+    save(ep, run)
+    research(ep, a.max_research_steps)
+    save(ep, run)
+    for i in range(len(ep["plan"]["segments"])):
+        write_segment(ep, i, a.max_revisions)
+        save(ep, run)
+    finish(ep, run)
+
+
+if __name__ == "__main__":
+    main()
