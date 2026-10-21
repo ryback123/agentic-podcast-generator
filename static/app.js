@@ -211,7 +211,7 @@ const VIEWS = {
     return `<div class="bar">
         <button class="btn btn-primary" data-act="research">${EP.facts.length ? "Research again" : "Run research"}</button>
         <button class="btn" data-act="writeAll">${hasScript() ? "Rewrite the whole script" : "Write the script"}</button>
-        <span class="grow"></span><span class="hint">${EP.facts.length} facts from ${pages} pages</span></div>
+        <span class="grow"></span><span class="hint">${EP.facts.length} facts from ${pages} pages${EP.research_stats ? `, ${EP.research_stats.credits} web search credits` : ""}</span></div>
       ${qs.length ? `<div class="qs">${qs.map(([q, t]) => {
         const fs = EP.facts.filter((f) => f.q === q);
         return `<div class="q"><header><h3>${esc(t)}</h3>
