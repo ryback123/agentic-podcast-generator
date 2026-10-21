@@ -147,7 +147,7 @@ Report each claim that contradicts the facts, and each specific fact (a number, 
 Severity: "major" if a listener would be misinformed (wrong or invented fact); "minor" for wording that is loose but not wrong.
 Reply with only JSON: {{"issues": [{{"line": int, "severity": "major" | "minor", "claim": str, "problem": str, "fix": str}}]}} (an empty list if everything is supported)."""
 
-EDITOR = """You are the story editor of a podcast for {audience}. Review one segment and report only concrete problems of these kinds:
+EDITOR = """You are the story editor of a podcast for {audience}. This is {role}. Review it and report only concrete problems of these kinds:
 1. Level: too advanced or too childish for the audience, or jargon left unexplained.
 2. Speech: lines that sound written rather than spoken, lecture-like monologues, or unnatural language. Target language: {lang}. {lang_rule}
 3. Characters: a speaker acting outside their role or knowledge. Cast:
@@ -357,7 +357,9 @@ def review(ep, i, text, budget):
         return turns, issues
     num = numbered(turns)
     fc = FACTCHECK.format(audience=plan["audience"], facts=fact_lines(ep["facts"]), numbered=num)
-    ed = EDITOR.format(audience=plan["audience"], lang=LANGS[r["lang"]][0], lang_rule=lang_rule(ep),
+    role = ("the opening segment" if i == 0 else "the closing segment, which ends the episode" if i == len(segs) - 1
+            else f"main segment {i} of {len(segs) - 2}")
+    ed = EDITOR.format(audience=plan["audience"], role=role, lang=LANGS[r["lang"]][0], lang_rule=lang_rule(ep),
                        cast=cast_text(plan), goal=segs[i]["goal"], numbered=num,
                        banned=", ".join(f'"{b}"' for b in BANNED_OPENERS[:6]),
                        covered="\n".join(f"- {s['title']}: {s['goal']} (ended with: {s['turns'][-1][1] if s.get('turns') else '-'})"
