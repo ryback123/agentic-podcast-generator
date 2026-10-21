@@ -2,6 +2,8 @@
 later by keeping the same two functions and result shape."""
 import json
 import re
+import time
+import urllib.error
 import urllib.parse
 import urllib.request
 
@@ -10,8 +12,14 @@ _UA = {"User-Agent": "podcast-agent/0.1 (course project)"}
 
 def _api(lang, **params):
     url = f"https://{lang}.wikipedia.org/w/api.php?" + urllib.parse.urlencode({**params, "format": "json"})
-    with urllib.request.urlopen(urllib.request.Request(url, headers=_UA), timeout=20) as r:
-        return json.load(r)
+    for attempt in range(4):
+        try:
+            with urllib.request.urlopen(urllib.request.Request(url, headers=_UA), timeout=20) as r:
+                return json.load(r)
+        except urllib.error.HTTPError as e:
+            if e.code != 429 or attempt == 3:
+                raise
+            time.sleep(float(e.headers.get("Retry-After") or 2 ** (attempt + 1)))  # rate limited: back off
 
 
 def web_search(query, lang="en", k=5):

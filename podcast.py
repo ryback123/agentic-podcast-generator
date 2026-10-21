@@ -52,7 +52,7 @@ Number of speakers: exactly {n}
 Target length: {minutes} minutes
 
 Plan:
-- Cast: exactly {n} speakers. For each: a first name common among {lang} speakers, written in Latin letters only (it is the speaker label); a role (for example host, co-host, expert, guest, skeptic); what they know about the topic; how they talk. Give the cast useful contrast: someone who explains and someone who asks what the listener would ask{extra_role}. Match the audience level in the requester's notes; with no level given, aim at curious adults with no background.
+- Cast: exactly {n} speakers. For each: a first name common among {lang} speakers, written in Latin letters only (it is the speaker label); a role (for example host, co-host, expert, guest, skeptic); what they know about the topic; how they talk (tone and rhythm only; do not give catchphrases or example words, they get overused). Give the cast useful contrast: someone who explains and someone who asks what the listener would ask{extra_role}. Match the audience level in the requester's notes; with no level given, aim at curious adults with no background.
 - Format for this episode: {fmt}. Opening hook: {hook}.
 - Exactly {k} segments whose minutes add up to {minutes}: an opening (hook, then the speakers introduce themselves; about 1 minute), {main} main segments, and a closing (recap and one memorable takeaway; about 1 minute). Each main segment has one clear goal and builds on the one before.
 - For each main segment, one to three research questions whose answers (facts, numbers, real examples, stories) would make the segment concrete and correct. The opening and closing have no questions.
@@ -109,12 +109,12 @@ Do not state any fact, number, name, or date that is not in this list or common 
 {prev}
 Language: {lang}. {lang_rule}
 Rules:
-- Write every number, date, unit, and symbol as spoken words (no digits, %, /, & and so on).
+- Write every number, date, unit, and symbol as spoken words (no digits, %, /, & and so on). Apostrophes and ordinary punctuation are fine; in English use contractions (it's, don't, you're).
 - No markdown, stage directions, sound effects, or emojis.
 - Short turns: one to three sentences, sometimes just a quick reaction. Vary turn lengths.
 - Speakers react to what was just said, ask follow-up questions, sometimes interrupt or disagree, and use concrete examples and analogies that suit the audience.
 - Do not start turns with stock phrases ({banned}) and do not reuse the same reaction within the episode.
-- Speakers never say their own name."""
+- Speakers never say their own name, except when introducing themselves in the opening."""
 
 WRITER = """You are writing one segment of a podcast episode as spoken dialogue, not an essay.
 
@@ -144,14 +144,16 @@ Segment:
 {numbered}
 
 Report each claim that contradicts the facts, and each specific fact (a number, date, name, or technical detail) that the facts list does not support.
-Reply with only JSON: {{"issues": [{{"line": int, "claim": str, "problem": str, "fix": str}}]}} (an empty list if everything is supported)."""
+Severity: "major" if a listener would be misinformed (wrong or invented fact); "minor" for wording that is loose but not wrong.
+Reply with only JSON: {{"issues": [{{"line": int, "severity": "major" | "minor", "claim": str, "problem": str, "fix": str}}]}} (an empty list if everything is supported)."""
 
 EDITOR = """You are the story editor of a podcast for {audience}. Review one segment and report only concrete problems of these kinds:
 1. Level: too advanced or too childish for the audience, or jargon left unexplained.
 2. Speech: lines that sound written rather than spoken, lecture-like monologues, or unnatural language. Target language: {lang}. {lang_rule}
 3. Characters: a speaker acting outside their role or knowledge. Cast:
 {cast}
-4. Flow: the segment misses its goal ("{goal}"), repeats earlier segments, or does not follow from the previous segment.
+4. Flow: the segment misses its goal ("{goal}"), repeats earlier segments (including ending the same way they did), or does not follow from the previous segment.
+Fixed rules the script must keep (never suggest breaking them): numbers and symbols written as words; no stock openers like {banned}; short turns.
 
 Earlier segments covered:
 {covered}
@@ -159,7 +161,8 @@ Earlier segments covered:
 Segment:
 {numbered}
 
-Reply with only JSON: {{"issues": [{{"line": int, "problem": str, "fix": str}}]}} with at most five issues, most important first; an empty list if the segment works."""
+Severity: "major" if a typical listener would notice it and it hurts the episode; "minor" for polish. Do not report taste-level rewording as major.
+Reply with only JSON: {{"issues": [{{"line": int, "severity": "major" | "minor", "problem": str, "fix": str}}]}} with at most five issues, most important first; an empty list if the segment works."""
 
 
 # ---------------------------------------------------------------- helpers
@@ -260,7 +263,7 @@ def research(ep, max_steps):
     name, _, wiki = LANGS[ep["request"]["lang"]]
     lang_note = (f'lang is "en" or "{wiki}" ({name} Wikipedia); English usually has more detail.'
                  if wiki and wiki != "en" else 'lang must be "en".')
-    results, read, history = {}, set(), []
+    results, read, history, searched = {}, set(), [], set()
     for step in range(1, max_steps + 1):
         cov = {q: sum(f["q"] == q for f in ep["facts"]) for q in qs}
         if all(c >= 2 for c in cov.values()):
@@ -275,7 +278,10 @@ def research(ep, max_steps):
         log(ep, "researcher", f"{tool} {json.dumps(args, ensure_ascii=False)}", thought=act.get("thought"))
         if tool == "done":
             return
-        if tool == "search":
+        if tool == "search" and (key := (args.get("query", "").lower().strip(), args.get("lang", "en"))) in searched:
+            obs = "already searched; read one of the results above or try a different query"
+        elif tool == "search":
+            searched.add(key)
             try:
                 hits = web_search(args.get("query", ""), args.get("lang", "en"))
                 lines = []
@@ -352,11 +358,15 @@ def review(ep, i, text, budget):
     fc = FACTCHECK.format(audience=plan["audience"], facts=fact_lines(ep["facts"]), numbered=num)
     ed = EDITOR.format(audience=plan["audience"], lang=LANGS[r["lang"]][0], lang_rule=lang_rule(ep),
                        cast=cast_text(plan), goal=segs[i]["goal"], numbered=num,
-                       covered="\n".join(f"- {s['title']}: {s['goal']}" for s in segs[:i]) or "(none)")
+                       banned=", ".join(f'"{b}"' for b in BANNED_OPENERS[:6]),
+                       covered="\n".join(f"- {s['title']}: {s['goal']} (ended with: {s['turns'][-1][1] if s.get('turns') else '-'})"
+                                         for s in segs[:i]) or "(none)")
     with ThreadPoolExecutor(2) as ex:
         jobs = [ex.submit(llm.chat_json, p, f"{who}:{i + 1}", temperature=0.2) for who, p in (("factcheck", fc), ("editor", ed))]
         for who, job in zip(("fact-check", "editor"), jobs):
             for x in job.result().get("issues") or []:
+                if x.get("severity") != "major":  # minor issues are logged by llm.py but do not trigger a rewrite
+                    continue
                 issues.append(f"Line {x.get('line', '?')} ({who}): {x.get('problem', '')} Fix: {x.get('fix', '')}")
     return turns, issues
 
