@@ -3,31 +3,20 @@ import re
 import unicodedata
 from collections import Counter
 
-# code: (name, script, Wikipedia code or None)
+# code: (name, script, Wikipedia code). English + the 11 major Indian languages.
 LANGS = {
     "en": ("English", "Latin", "en"),
-    "as": ("Assamese", "Bengali", "as"),
-    "bn": ("Bengali", "Bengali", "bn"),
-    "brx": ("Bodo", "Devanagari", None),
-    "doi": ("Dogri", "Devanagari", None),
-    "gu": ("Gujarati", "Gujarati", "gu"),
     "hi": ("Hindi", "Devanagari", "hi"),
-    "kn": ("Kannada", "Kannada", "kn"),
-    "ks": ("Kashmiri", "Arabic", "ks"),
-    "gom": ("Konkani", "Devanagari", "gom"),
-    "mai": ("Maithili", "Devanagari", "mai"),
-    "ml": ("Malayalam", "Malayalam", "ml"),
-    "mni": ("Manipuri", "Bengali", "mni"),  # Meetei Mayek is also official: use whichever the TTS API expects
+    "bn": ("Bengali", "Bengali", "bn"),
     "mr": ("Marathi", "Devanagari", "mr"),
-    "ne": ("Nepali", "Devanagari", "ne"),
+    "te": ("Telugu", "Telugu", "te"),
+    "ta": ("Tamil", "Tamil", "ta"),
+    "gu": ("Gujarati", "Gujarati", "gu"),
+    "kn": ("Kannada", "Kannada", "kn"),
+    "ml": ("Malayalam", "Malayalam", "ml"),
     "or": ("Odia", "Odia", "or"),
     "pa": ("Punjabi", "Gurmukhi", "pa"),
-    "sa": ("Sanskrit", "Devanagari", "sa"),
-    "sat": ("Santali", "Ol Chiki", "sat"),
-    "sd": ("Sindhi", "Arabic", "sd"),
-    "ta": ("Tamil", "Tamil", "ta"),
-    "te": ("Telugu", "Telugu", "te"),
-    "ur": ("Urdu", "Arabic", "ur"),
+    "as": ("Assamese", "Bengali", "as"),
 }
 SCRIPTS = {
     "Latin": [(0x41, 0x5A), (0x61, 0x7A), (0xC0, 0x24F)],
@@ -40,9 +29,6 @@ SCRIPTS = {
     "Telugu": [(0xC00, 0xC7F)],
     "Kannada": [(0xC80, 0xCFF)],
     "Malayalam": [(0xD00, 0xD7F)],
-    "Arabic": [(0x600, 0x6FF), (0x750, 0x77F), (0xFB50, 0xFDFF), (0xFE70, 0xFEFF)],
-    "Ol Chiki": [(0x1C50, 0x1C7F)],
-    "Meetei Mayek": [(0xABC0, 0xABFF)],
 }
 # ponytail: speaking-rate guesses; replace with characters/minute measured from the TTS API per language
 CHARS_PER_MIN = {"en": 900}

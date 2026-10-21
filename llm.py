@@ -13,20 +13,20 @@ from openai import OpenAI
 _client = OpenAI(base_url=os.environ.get("LLM_BASE_URL", "http://bodhanai-node004:8031/v1"),
                  api_key=os.environ.get("LLM_API_KEY", "EMPTY"), timeout=900)
 MODEL = os.environ.get("LLM_MODEL", "gemma-4-31b")
-LOG = None  # path; every call is appended here as one JSON line
 _lock = threading.Lock()
 
 
-def chat(prompt, agent, temperature=0.7, max_tokens=4000):
+def chat(prompt, agent, temperature=0.7, max_tokens=4000, log=None):
+    """log: optional path; every call is appended there as one JSON line."""
     t = time.time()
     r = _client.chat.completions.create(model=MODEL, messages=[{"role": "user", "content": prompt}],
                                         temperature=temperature, max_tokens=max_tokens)
     out, finish = r.choices[0].message.content or "", r.choices[0].finish_reason
-    if LOG:
+    if log:
         rec = {"agent": agent, "prompt": prompt, "output": out, "finish": finish,
                "tokens_in": r.usage.prompt_tokens, "tokens_out": r.usage.completion_tokens,
                "seconds": round(time.time() - t, 1)}
-        with _lock, open(LOG, "a") as f:
+        with _lock, open(log, "a") as f:
             f.write(json.dumps(rec, ensure_ascii=False) + "\n")
     if finish == "length":
         raise RuntimeError(f"{agent}: reply cut off at max_tokens={max_tokens}")
