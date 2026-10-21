@@ -80,7 +80,12 @@ Tools:
 - read {{"ids": [str]}}: reads up to three search results by id (like "r3"); facts relevant to the questions are extracted and saved.
 - done {{"reason": str}}: stops research. Use it when every question has at least two facts, or when more searching is not helping.
 
-Step {step} of {max_steps}. Prefer reading promising results over searching again.
+How to research well:
+- One search targets one question. Keep queries short: at most 8 words for the web, 2-4 words for Wikipedia.
+- After a search, read the one to three most promising results before searching again.
+- If two searches for a question find nothing useful, move on to other questions; some questions can stay thin.
+
+Step {step} of {max_steps}.
 Reply with only JSON: {{"thought": "<one sentence>", "tool": "search" | "read" | "done", "args": {{...}}}}"""
 
 NOTES = """Extract facts from this page that help answer the research questions.
@@ -329,10 +334,15 @@ def set_plan(ep, plan):
 def take_notes(ep, hit):
     try:
         text = search.read_page(hit)
-    except (OSError, ValueError, KeyError) as e:  # tool error is reported back to the agent
+    except (OSError, ValueError, KeyError) as e:  # tool errors are reported back to the agent
         return [], f"could not read: {e}"
+    if len(text.strip()) < 80:
+        return [], "page has no readable text"
     qs = "\n".join(f"{q}: {t}" for q, t in ep["questions"].items())
-    out = ask(ep, NOTES.format(questions=qs, title=hit["title"], text=text), "notes", json_reply=True, temperature=0.2)
+    try:
+        out = ask(ep, NOTES.format(questions=qs, title=hit["title"], text=text), "notes", json_reply=True, temperature=0.2)
+    except ValueError:  # reply was not JSON twice; the raw replies are in calls.jsonl
+        return [], "could not extract facts from this page"
     facts = []
     for f in out.get("facts", []):
         qid = str(f.get("q", "")).strip()
@@ -377,7 +387,10 @@ def research(ep, max_steps=20):
             return
         source = args.get("source") or ("web" if search.TAVILY_KEY else "wikipedia")
         key = (args.get("query", "").lower().strip(), source, args.get("lang", "en"))
-        if tool == "search" and key in searched:
+        n_words = len(args.get("query", "").split())
+        if tool == "search" and n_words > 10:  # long multi-question queries return poor results and waste credits
+            obs = f"query too long ({n_words} words): search for one question in at most 8 words"
+        elif tool == "search" and key in searched:
             obs = "already searched; read one of the results above or try a different query"
         elif tool == "search" and source == "web" and not search.TAVILY_KEY:
             obs = 'web search is not configured; use source "wikipedia"'

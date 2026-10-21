@@ -3,6 +3,7 @@ search, page text included) and Wikipedia (free, no key). Hits share one shape: 
 import json
 import os
 import re
+import socket
 import threading
 import time
 import urllib.error
@@ -10,7 +11,9 @@ import urllib.parse
 import urllib.request
 
 TAVILY_KEY = os.environ.get("TAVILY_API_KEY", "")
-_UA = {"User-Agent": "podcast-agent/0.1 (course project)"}
+SOCIAL = ["instagram.com", "facebook.com", "x.com", "twitter.com", "youtube.com", "tiktok.com", "pinterest.com", "reddit.com", "quora.com"]
+# Wikimedia policy: identify the client with contact info, or anonymous HTTP/1.1 requests get throttled (429)
+_UA = {"User-Agent": "podcast-agent/0.1 (course project; nikhil.narasimhan99@gmail.com) python-urllib"}
 # ponytail: per-process throttle for Wikipedia's anonymous limits; drop it with a paid search API
 _MIN_INTERVAL, _last, _lock = 1.0, [0.0], threading.Lock()
 
@@ -30,6 +33,20 @@ def _api(lang, **params):
             time.sleep(float(e.headers.get("Retry-After") or 2 ** (attempt + 1)))  # rate limited: back off
 
 
+# ponytail: cluster DNS quirk (2026-10-22): the default IPv4+IPv6 lookup of api.tavily.com fails every time while
+# IPv4-only lookups work, so resolve that one host over IPv4. Remove when the cluster resolver is fixed.
+_getaddrinfo = socket.getaddrinfo
+
+
+def _getaddrinfo_tavily_v4(host, port, family=0, type=0, proto=0, flags=0):
+    if host == "api.tavily.com" and family == 0:
+        family = socket.AF_INET
+    return _getaddrinfo(host, port, family, type, proto, flags)
+
+
+socket.getaddrinfo = _getaddrinfo_tavily_v4
+
+
 def _tavily(endpoint, body):
     req = urllib.request.Request(f"https://api.tavily.com/{endpoint}", data=json.dumps(body).encode(),
                                  headers={"Content-Type": "application/json", "Authorization": f"Bearer {TAVILY_KEY}"})
@@ -39,7 +56,8 @@ def _tavily(endpoint, body):
 
 def web_search(query, k=5):
     """Whole web (Tavily, basic depth = 1 credit). Page text comes back with the hit, so reading it is free."""
-    out = _tavily("search", {"query": query, "max_results": k, "search_depth": "basic", "include_raw_content": True})
+    out = _tavily("search", {"query": query, "max_results": k, "search_depth": "basic", "include_raw_content": True,
+                             "exclude_domains": SOCIAL})
     return [{"id": h["url"], "title": h.get("title") or h["url"], "snippet": h.get("content") or "", "url": h["url"],
              "text": h.get("raw_content") or ""} for h in out.get("results", [])]
 
@@ -58,7 +76,7 @@ def read_page(hit, max_chars=24000):
         text = hit.get("text")
         if not text:
             res = _tavily("extract", {"urls": [hit["url"]]}).get("results") or [{}]
-            text = res[0].get("raw_content") or ""
+            text = res[0].get("raw_content") or hit.get("snippet") or ""  # e.g. scanned PDFs: keep the snippet
         return text[:max_chars]
     lang, pid = hit["id"].split(":")
     page = _api(lang, action="query", prop="extracts", explaintext=1, pageids=pid)["query"]["pages"][pid]
