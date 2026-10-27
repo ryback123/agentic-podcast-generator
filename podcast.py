@@ -125,7 +125,7 @@ Rules:
 - Speakers never say their own name, except when introducing themselves in the opening.
 - Whenever a speaker's name is said, write it in Latin letters with normal capitalisation (Riya, not RIYA), even inside {lang} sentences.
 - Use the right grammatical gender for each speaker (see the cast).
-- Make it sound live. Now and then a listener reacts with a word or two while the other is still talking (like "hmm" or "right", in {lang} or English as people really say it). Write it as its own line straight after the line it reacts to: NAME (backchannel): text. Two to four per segment, varied, never by the speaker of the line they react to.
+- Make it sound live. Now and then a listener reacts with a word or two while the other is still talking (like "hmm", "right" or "I see", in {lang} or English as people really say it). Write it as its own line straight after the line it reacts to: NAME (backchannel): text. Two to four per segment, varied, never by the speaker of the line they react to.
 - Once or twice per segment, someone cuts in before the other finishes. End the interrupted line mid-sentence with a dash (—), then tag the next line NAME (cuts in): text for a sharp interruption (disagreement, alarm), or NAME (talks over): text when the first speaker trails off underneath (eager agreement, finishing their thought). Use both kinds.{note}"""
 
 WRITER = """You are writing one segment of a podcast episode as spoken dialogue, not an essay.

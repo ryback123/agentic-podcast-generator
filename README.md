@@ -22,8 +22,8 @@ Five agents hand the episode along. Each step can also be run, edited or redone 
 - **No native tool calling.** Agents call their tools by replying in plain-text JSON, so any OpenAI-compatible
   chat endpoint works.
 - **Overlapping speech.** The writer adds backchannels (a listener's quick "hmm" or "right" while the other person
-  talks) and cut-ins (someone starts before the other finishes). In the audio, a backchannel plays quietly over the
-  other line. A cut-in starts before the other line ends, which then stops dead or fades out.
+  talks) and cut-ins (someone starts before the other finishes). In the audio, a backchannel plays quietly in a pause
+  of the other line, which carries on. A cut-in starts before the other line ends, which then stops dead or fades out.
 - **Deterministic checks.** The code checks in `checks.py` cover line format, length against the time budget,
   repeated openers, digits and symbols that TTS reads badly, and script and code-mix balance. For example, they flag
   Hindi written in Latin letters, or too much English for the chosen mix.
@@ -59,8 +59,8 @@ Open http://127.0.0.1:8842. The UI walks through Plan → Research → Script �
 - **Plan:** edit the cast and outline. Speaker names are made up by the producer; rename anyone at any time, and the
   script lines and voice choices follow.
 - **Research:** run research again.
-- **Script:** edit any line and choose how it starts (own turn, backchannel, cuts in with a hard stop, cuts in with
-  a fade), review or fix a segment, or rewrite a segment with a note.
+- **Script:** edit any line and choose how it starts (own turn, filler while the other keeps talking, cuts in with a
+  hard stop, cuts in with a fade), review or fix a segment, or rewrite a segment with a note.
 - **Audio:** pick voices and re-roll a single line's audio.
 
 "Make the whole episode" runs every step in one go. Long steps run as background jobs while the page shows what the

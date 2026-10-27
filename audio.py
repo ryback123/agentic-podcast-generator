@@ -22,11 +22,12 @@ MODEL = os.environ.get("TTS_MODEL", "tts")
 VOICES = [v.strip() for v in os.environ.get("TTS_VOICES", "").split(",") if v.strip()]
 RATE = 24000
 GAP_TURN, GAP_SEGMENT = 0.25, 0.8  # ponytail: fixed pauses; vary by line type if the rhythm sounds mechanical
-# Overlaps (line modes, see checks.TAGS). ponytail: fixed spots and timings; anchor them to word timings
-# from the TTS/ASR if a backchannel lands on speech awkwardly.
+# Overlaps (line modes, see checks.TAGS). ponytail: fixed timings; anchor cut-ins to word timings from the TTS/ASR
+# if they land awkwardly.
 OVERLAP = {"cut": 0.5, "fade": 1.0}  # a cut-in starts this many seconds before the interrupted line ends
 CUT_KEEP = 0.12  # with a direct cut, the interrupted line keeps sounding this long under the cut-in, then stops
-BACKCHANNEL_AT, BACKCHANNEL_GAIN = 0.6, 0.6  # a backchannel starts 60% into the line it reacts to, a bit quieter
+BACKCHANNEL_AT, BACKCHANNEL_GAIN = 0.6, 0.6  # a backchannel goes in the pause nearest 60% into the line, a bit quieter
+PAUSE = 0.2  # a quiet stretch this long is a pause (real TTS: 0.2-1 s at clause breaks; ~0.1 s gaps are consonants)
 _client = OpenAI(base_url=BASE_URL, api_key=os.environ.get("TTS_API_KEY", "EMPTY"), timeout=600) if BASE_URL else None
 
 
@@ -93,18 +94,33 @@ def _load(path):
     return np.clip(x * (0.1 / rms), -1, 1) if rms > 0 else x  # level-match lines (~ -20 dBFS)
 
 
+def _pause_near(x, at, earliest):
+    """Start (sample) of the pause nearest `at` (a fraction of the line), at or after `earliest` and before the last
+    10% of the line; None if there is none."""
+    f = int(0.02 * RATE)
+    n = len(x) // f
+    quiet = np.sqrt((x[: n * f].reshape(n, f) ** 2).mean(1)) < 0.015  # lines are level-matched to rms 0.1
+    edges = np.diff(np.concatenate([[0], quiet.astype(np.int8), [0]]))
+    runs = zip(np.flatnonzero(edges == 1) * f, np.flatnonzero(edges == -1) * f)
+    ok = [s for s, e in runs if e - s >= PAUSE * RATE and earliest <= s <= 0.9 * len(x)]
+    return min(ok, key=lambda s: abs(s - at * len(x)), default=None)
+
+
 def mix(clips):
     """clips: [(segment, mode, samples)] in script order -> one track. Normal lines follow each other after a pause.
-    A backchannel plays over the line holding the floor. A cut-in starts before that line ends, and the line then
-    stops dead (cut) or fades out underneath (fade). Nothing overlaps across segments."""
+    A backchannel plays in a pause of the line holding the floor, which carries on. A cut-in starts before that line
+    ends, and the line then stops dead (cut) or fades out underneath (fade). Nothing overlaps across segments."""
     placed, floor, end, seg0 = [], None, 0, None  # placed: [(start sample, samples)]; floor: index into placed
+    bc_from = 0  # the next backchannel starts after the last one on the same line ends
     for seg, mode, x in clips:
         if seg != seg0:
             floor = None
         if mode == "backchannel" and floor is not None:
             fs, fx = placed[floor]
-            placed.append((fs + int(BACKCHANNEL_AT * len(fx)), x * BACKCHANNEL_GAIN))
-            end = max(end, placed[-1][0] + len(x))
+            p = _pause_near(fx, BACKCHANNEL_AT, bc_from)
+            k = p + int(0.08 * RATE) if p is not None else max(int(BACKCHANNEL_AT * len(fx)), bc_from)
+            placed.append((fs + k, x * BACKCHANNEL_GAIN))
+            bc_from, end = k + len(x), max(end, fs + k + len(x))
             continue
         if mode in OVERLAP and floor is not None:
             fs, fx = placed[floor]
@@ -122,7 +138,7 @@ def mix(clips):
         else:
             start = end + int(RATE * (GAP_TURN if seg == seg0 else GAP_SEGMENT)) if placed else 0
         placed.append((start, x))
-        floor, end, seg0 = len(placed) - 1, start + len(x), seg
+        floor, end, seg0, bc_from = len(placed) - 1, start + len(x), seg, 0
     out = np.zeros(max((s + len(x) for s, x in placed), default=0), np.float32)
     for s, x in placed:
         out[s:s + len(x)] += x
@@ -171,7 +187,13 @@ if __name__ == "__main__":  # self-test of stitching with synthetic clips (no TT
     plain = mix([(0, "", one), (0, "", one)])
     assert len(plain) == int(2.25 * R)
     bc = mix([(0, "", one), (0, "backchannel", one[: R // 4]), (0, "", one)])
-    assert len(bc) == len(plain) and abs(bc[int(0.7 * R)] - 0.1 * (1 + BACKCHANNEL_GAIN)) < 1e-6  # over line 1, quieter
+    assert len(bc) == len(plain) and abs(bc[int(0.7 * R)] - 0.1 * (1 + BACKCHANNEL_GAIN)) < 1e-6  # no pause: at 60%
+    hm, gap = one[: R // 4], np.zeros(int(0.3 * R), np.float32)
+    talk = np.concatenate([one, gap, one, one])  # 3.3 s line with one pause, at 1.0 s
+    two = mix([(0, "", talk), (0, "backchannel", hm), (0, "backchannel", hm)])
+    assert len(two) == len(talk) and abs(two[int(1.2 * R)] - 0.1 * BACKCHANNEL_GAIN) < 1e-6  # 1st in the pause, alone
+    assert abs(two[int(2.1 * R)] - 0.1 * (1 + BACKCHANNEL_GAIN)) < 1e-6  # 2nd: no pause left, so at 60% (1.98 s)
+    assert _pause_near(np.concatenate([one, gap[: R // 10], one]), 0.5, 0) is None  # 0.1 s gaps are not pauses
     cut = mix([(0, "", one), (0, "cut", one)])
     assert len(cut) == int(1.5 * R)  # starts 0.5 s before line 1 ends
     assert abs(cut[int(0.55 * R)] - 0.2) < 1e-6 and abs(cut[int(0.7 * R)] - 0.1) < 1e-6  # both, then line 1 stops

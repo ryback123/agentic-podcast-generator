@@ -281,14 +281,14 @@ function statsBar() {
 }
 
 // how a line starts (stored as the line's third field); see checks.TAGS
-const MODES = [["", "Own turn"], ["backchannel", "Backchannel"], ["cut", "Cuts in, hard stop"], ["fade", "Cuts in, fade out"]];
-const MODE_NOTE = { backchannel: "backchannel", cut: "cuts in", fade: "cuts in, fades" };
+const MODES = [["", "Own turn"], ["backchannel", "Filler, they keep talking"], ["cut", "Cuts in, hard stop"], ["fade", "Cuts in, fade out"]];
+const MODE_NOTE = { backchannel: "filler", cut: "cuts in", fade: "cuts in, fades" };
 
 function lineRow(sp, tx, mode = "") {
   const names = EP.plan.speakers.map((s) => s.name);
   return `<div class="ln" style="--c:${chanOf(sp)}" data-mode="${mode}">
     <span class="who"><select class="sp" aria-label="Speaker">${names.map((n) => `<option ${n === sp ? "selected" : ""}>${esc(n)}</option>`).join("")}</select>
-      <select class="md" aria-label="How this line starts" title="Backchannel: a quick reaction over the previous line. Cuts in: starts before the previous line ends, which stops dead or fades out.">
+      <select class="md" aria-label="How this line starts" title="Filler: a quick hmm or I see in a pause of the previous line, which carries on. Cuts in: starts before the previous line ends, which stops dead or fades out.">
         ${MODES.map(([v, t]) => `<option value="${v}" ${v === mode ? "selected" : ""}>${t}</option>`).join("")}</select></span>
     <textarea class="auto" rows="1" lang="${EP.request.lang}" aria-label="Line">${esc(tx)}</textarea>
     <span class="acts"><button class="btn btn-quiet" type="button" data-act="insLine" aria-label="Insert a line below">+</button>
