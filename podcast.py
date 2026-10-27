@@ -123,6 +123,7 @@ Rules:
 - Speakers react to what was just said, ask follow-up questions, sometimes interrupt or disagree, and use concrete examples and analogies that suit the audience.
 - Do not start turns with stock phrases ({banned}) and do not reuse the same reaction within the episode.
 - Speakers never say their own name, except when introducing themselves in the opening.
+- Whenever a speaker's name is said, write it in Latin letters with normal capitalisation (Riya, not RIYA), even inside {lang} sentences.
 - Use the right grammatical gender for each speaker (see the cast).{note}"""
 
 WRITER = """You are writing one segment of a podcast episode as spoken dialogue, not an essay.
@@ -318,16 +319,37 @@ def set_plan(ep, plan):
     written = any(s.get("turns") for s in plan["segments"])
     if written and len(old) != len(new):
         raise ValueError("the script is already written: keep the same number of speakers (rename them instead)")
-    rename = dict(zip(old, new))
+    rename = {o: n for o, n in zip(old, new) if o != n}
+    said = renamer(rename)
     for s, name in zip(plan["speakers"], new):
         s["name"] = name
     for seg in plan["segments"]:
         seg["minutes"] = float(seg["minutes"])
-        seg["turns"] = [[rename.get(sp, sp), tx] for sp, tx in seg.get("turns") or []]
+        seg["goal"] = said(seg.get("goal") or "")
+        seg["turns"] = [[rename.get(sp, sp), said(tx)] for sp, tx in seg.get("turns") or []]
+    if rename and (a := ep.get("audio")):  # chosen voices and re-rolled takes follow the speaker
+        a["voices"] = {rename.get(sp, sp): v for sp, v in a.get("voices", {}).items()}
+        a["takes"] = {f"{rename.get(sp, sp)}|{said(tx)}": n
+                      for sp, tx, n in ((*k.split("|", 1), n) for k, n in a.get("takes", {}).items())}
     plan.setdefault("hook", ep["plan"].get("hook", "a surprising fact"))
     assign_questions(ep, plan)
     ep["plan"] = plan
-    log(ep, "user", "edited the plan")
+    log(ep, "user", "edited the plan" + (f", renamed {', '.join(f'{o} to {n}' for o, n in rename.items())}" if rename else ""))
+    if written:
+        finish(ep)  # script files and speaker shares use the new names
+
+
+def renamer(rename):
+    """Function that swaps old speaker names for new ones where the lines say them ("I'm Riya", "मैं हूँ Riya").
+    ponytail: Latin-letter mentions only (the writer is told to write names that way); scripts written before that
+    rule may still have native-script spellings, and a name that is also a capitalised word ("Will") gets swapped too."""
+    pairs = {}
+    for o, n in rename.items():
+        pairs.update({o: n, o.capitalize(): n.capitalize()})
+    if not pairs:
+        return lambda text: text
+    rx = re.compile(r"(?<![A-Za-z])(" + "|".join(sorted(map(re.escape, pairs), key=len, reverse=True)) + r")(?![A-Za-z])")
+    return lambda text: rx.sub(lambda m: pairs[m.group(1)], text)
 
 
 # ---------------------------------------------------------------- researcher

@@ -174,7 +174,7 @@ const VIEWS = {
         : `<div class="empty"><p>No plan yet.</p><button class="btn btn-primary" data-act="replan">Plan the episode</button></div>`;
     }
     const p = EP.plan;
-    return `<section><h2>Cast</h2><div class="strips">${p.speakers.map((s, i) => `
+    return `<section><h2>Cast</h2>${hasScript() ? '<p class="hint">Renaming a speaker also changes their name in the script lines. Saved voices stay with them.</p>' : ""}<div class="strips">${p.speakers.map((s, i) => `
       <div class="strip" style="--c:${color(i)}">
         <input type="text" class="nm" name="name" value="${esc(s.name)}" aria-label="Speaker name">
         <label class="f"><span>Gender</span><select name="gender">${["female", "male"].map((g) =>

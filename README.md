@@ -53,7 +53,8 @@ python -m uvicorn app:app --host 127.0.0.1 --port 8842
 
 Open http://127.0.0.1:8842. The UI walks through Plan → Research → Script → Audio:
 
-- **Plan:** edit the cast and outline.
+- **Plan:** edit the cast and outline. Speaker names are made up by the producer; rename anyone at any time, and the
+  script lines and voice choices follow.
 - **Research:** run research again.
 - **Script:** edit any line, review or fix a segment, or rewrite a segment with a note.
 - **Audio:** pick voices and re-roll a single line's audio.
@@ -68,7 +69,7 @@ To share it from a machine with no public address: `cloudflared tunnel --url htt
 ```bash
 python podcast.py --topic "How UPI payments work" --description "for class 8 students" --lang hi --minutes 12
 python podcast.py --help        # speakers, code-mix level, research steps, revisions, seed, output dir
-python checks.py && python audio.py   # self-tests, no model calls
+python checks.py && python audio.py && python test_podcast.py   # self-tests, no model calls
 ```
 
 ## Output
