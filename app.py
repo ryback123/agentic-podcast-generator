@@ -135,7 +135,7 @@ def save_plan(eid: str, plan: dict = Body(...)):
     ep = editable(eid)
     try:
         pc.set_plan(ep, plan)
-    except (ValueError, TypeError, KeyError) as e:
+    except (ValueError, TypeError, KeyError, IndexError) as e:
         raise HTTPException(400, str(e))
     return {"ok": True}
 
@@ -177,7 +177,7 @@ def save_segment(eid: str, i: int, body: dict = Body(...)):
     segment_index(ep, i)
     try:
         pc.set_turns(ep, i, body["turns"])
-    except (ValueError, TypeError, KeyError) as e:
+    except (ValueError, TypeError, KeyError, IndexError) as e:
         raise HTTPException(400, str(e))
     return {"issues": ep["plan"]["segments"][i]["open_issues"]}
 

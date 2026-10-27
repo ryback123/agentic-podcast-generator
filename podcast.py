@@ -22,7 +22,7 @@ from concurrent.futures import ThreadPoolExecutor
 from pathlib import Path
 
 import llm
-from checks import BANNED_OPENERS, LANGS, check_segment, chars_per_min, parse_turns
+from checks import BANNED_OPENERS, LANGS, TAGS, check_segment, chars_per_min, label, parse_turns
 import search
 
 REPO = Path(__file__).resolve().parent
@@ -124,13 +124,15 @@ Rules:
 - Do not start turns with stock phrases ({banned}) and do not reuse the same reaction within the episode.
 - Speakers never say their own name, except when introducing themselves in the opening.
 - Whenever a speaker's name is said, write it in Latin letters with normal capitalisation (Riya, not RIYA), even inside {lang} sentences.
-- Use the right grammatical gender for each speaker (see the cast).{note}"""
+- Use the right grammatical gender for each speaker (see the cast).
+- Make it sound live. Now and then a listener reacts with a word or two while the other is still talking (like "hmm" or "right", in {lang} or English as people really say it). Write it as its own line straight after the line it reacts to: NAME (backchannel): text. Two to four per segment, varied, never by the speaker of the line they react to.
+- Once or twice per segment, someone cuts in before the other finishes. End the interrupted line mid-sentence with a dash (—), then tag the next line NAME (cuts in): text for a sharp interruption (disagreement, alarm), or NAME (talks over): text when the first speaker trails off underneath (eager agreement, finishing their thought). Use both kinds.{note}"""
 
 WRITER = """You are writing one segment of a podcast episode as spoken dialogue, not an essay.
 
 {ctx}
 
-Output only dialogue lines, one turn per line, as NAME: text, using only these names: {names}."""
+Output only dialogue lines, one turn per line, as NAME: text (or NAME (tag): text for the tags above), using only these names: {names}."""
 
 REVISE = """You are revising one segment of a podcast episode.
 
@@ -142,7 +144,7 @@ Current draft:
 Reviewers found these problems:
 {issues}
 
-Rewrite the segment so every problem is fixed; keep what works. Output the full revised segment only, one turn per line, as NAME: text, using only these names: {names}."""
+Rewrite the segment so every problem is fixed; keep what works. Output the full revised segment only, one turn per line, as NAME: text (or NAME (tag): text for the tags above), using only these names: {names}."""
 
 FACTCHECK = """You are a strict fact-checker for one segment of a podcast for {audience}.
 Check every factual claim in the segment (numbers, dates, names, how things work, causes and effects) against the facts list. Opinions, questions, and everyday common knowledge are fine.
@@ -163,7 +165,7 @@ EDITOR = """You are the story editor of a podcast for {audience}. This is {role}
 3. Characters: a speaker acting outside their role or knowledge. Cast:
 {cast}
 4. Flow: the segment misses its goal ("{goal}"), repeats earlier segments (including ending the same way they did), or does not follow from the previous segment.
-Fixed rules the script must keep (never suggest breaking them): numbers and symbols written as words; no stock openers like {banned}; short turns.
+Fixed rules the script must keep (never suggest breaking them): numbers and symbols written as words; no stock openers like {banned}; short turns; lines tagged (backchannel), (cuts in) or (talks over) are deliberate overlaps, and a line cut off mid-sentence before a cut-in is deliberate.
 
 Earlier segments covered:
 {covered}
@@ -184,7 +186,11 @@ def save(ep):
 
 
 def load(run_dir):
-    return json.loads((Path(run_dir) / "episode.json").read_text())
+    ep = json.loads((Path(run_dir) / "episode.json").read_text())
+    ep["dir"] = str(Path(run_dir).resolve())  # saves go where it was loaded from, even if the folder was copied or moved
+    for seg in (ep.get("plan") or {}).get("segments", []):  # lines are [speaker, text, mode]; older episodes lack mode
+        seg["turns"] = [list(t) + [""] * (3 - len(t)) for t in seg.get("turns") or []]
+    return ep
 
 
 def new_episode(topic, description="", lang="en", speakers=2, minutes=12, code_mix="medium", seed=None, out=RUNS):
@@ -237,11 +243,11 @@ def fact_lines(facts):
 
 
 def numbered(turns):
-    return "\n".join(f"{k}. {sp}: {tx}" for k, (sp, tx) in enumerate(turns, 1))
+    return "\n".join(f"{k}. {label(sp, mode)}: {tx}" for k, (sp, tx, mode) in enumerate(turns, 1))
 
 
 def turns_text(turns):
-    return "\n".join(f"{sp}: {tx}" for sp, tx in turns)
+    return "\n".join(f"{label(sp, mode)}: {tx}" for sp, tx, mode in turns)
 
 
 # ---------------------------------------------------------------- producer
@@ -326,7 +332,7 @@ def set_plan(ep, plan):
     for seg in plan["segments"]:
         seg["minutes"] = float(seg["minutes"])
         seg["goal"] = said(seg.get("goal") or "")
-        seg["turns"] = [[rename.get(sp, sp), said(tx)] for sp, tx in seg.get("turns") or []]
+        seg["turns"] = [[rename.get(sp, sp), said(tx), *rest] for sp, tx, *rest in seg.get("turns") or []]
     if rename and (a := ep.get("audio")):  # chosen voices and re-rolled takes follow the speaker
         a["voices"] = {rename.get(sp, sp): v for sp, v in a.get("voices", {}).items()}
         a["takes"] = {f"{rename.get(sp, sp)}|{said(tx)}": n
@@ -554,9 +560,11 @@ def review_segment(ep, i):
 def set_turns(ep, i, turns):
     """User edit of one segment's lines; returns the deterministic-check issues."""
     names = {s["name"] for s in ep["plan"]["speakers"]}
-    clean = [[sp, " ".join(str(tx).split())] for sp, tx in turns if str(tx).strip()]
-    if bad := {sp for sp, _ in clean} - names:
+    clean = [[t[0], " ".join(str(t[1]).split()), t[2] if len(t) > 2 else ""] for t in turns if str(t[1]).strip()]
+    if bad := {sp for sp, _, _ in clean} - names:
         raise ValueError(f"unknown speakers {sorted(bad)}")
+    if bad := {m for *_, m in clean} - {"", *TAGS}:
+        raise ValueError(f"unknown line modes {sorted(bad)}")
     seg = ep["plan"]["segments"][i]
     seg["turns"], seg["open_issues"] = clean, quick_check(ep, i, clean)
     log(ep, "user", f"edited segment {i + 1}: {len(clean)} lines")
@@ -574,7 +582,8 @@ def write_all(ep, max_revisions=2, only_missing=False):
 def finish(ep):
     """Write script.json (for TTS) and script.txt, and refresh stats."""
     plan, lang, run = ep["plan"], ep["request"]["lang"], Path(ep["dir"])
-    turns = [{"speaker": sp, "text": tx} for s in plan["segments"] for sp, tx in s.get("turns", [])]
+    turns = [{"speaker": sp, "text": tx, **({"mode": mode} if mode else {})}
+             for s in plan["segments"] for sp, tx, mode in s.get("turns", [])]
     chars = sum(len(t["text"]) for t in turns) or 1
     calls = run / "calls.jsonl"
     ep["stats"] = {"turns": len(turns), "chars": chars, "est_minutes": round(chars / chars_per_min(lang), 1),
@@ -588,7 +597,7 @@ def finish(ep):
         "sources": [{"title": t, "url": u} for t, u in sources]}, ensure_ascii=False, indent=1))
     lines = [plan["title"], cast_text(plan), ""]
     for k, s in enumerate(plan["segments"], 1):
-        lines += [f"## {k}. {s['title']}"] + [f"{sp}: {tx}" for sp, tx in s.get("turns", [])] + [""]
+        lines += [f"## {k}. {s['title']}"] + [f"{label(sp, mode)}: {tx}" for sp, tx, mode in s.get("turns", [])] + [""]
     (run / "script.txt").write_text("\n".join(lines))
     log(ep, "done", f"script ready: {ep['stats']['turns']} lines, ~{ep['stats']['est_minutes']} min, "
                     f"{ep['stats']['open_issues']} open issues")

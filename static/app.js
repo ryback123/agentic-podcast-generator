@@ -262,7 +262,7 @@ const VIEWS = {
           <span class="hint">${ready} of ${EP.lines.length} lines have audio${ready && ready < EP.lines.length ? "; only new or changed lines are generated" : ""}.</span></div></section>
       <section><h2>Lines</h2>${EP.lines.map((l) => `<div class="al" style="--c:${chanOf(l.speaker)}">
         ${l.ready ? `<button class="play" type="button" data-act="play" data-src="${file(l.file)}" aria-label="Play line">${PLAY}</button>` : "<span></span>"}
-        <span class="who">${esc(l.speaker)}</span><span class="tx" lang="${EP.request.lang}" title="${esc(l.text)}">${esc(l.text)}</span>
+        <span class="who">${esc(l.speaker)}${l.mode ? `<small>${MODE_NOTE[l.mode]}</small>` : ""}</span><span class="tx" lang="${EP.request.lang}" title="${esc(l.text)}">${esc(l.text)}</span>
         ${l.ready ? `<button class="btn btn-quiet" data-act="retake" data-i="${l.segment}" data-k="${l.line}">New take</button>` : '<span class="pending">no audio yet</span>'}
       </div>`).join("")}</section>`;
   },
@@ -280,10 +280,16 @@ function statsBar() {
     </div></div>`;
 }
 
-function lineRow(sp, tx) {
+// how a line starts (stored as the line's third field); see checks.TAGS
+const MODES = [["", "Own turn"], ["backchannel", "Backchannel"], ["cut", "Cuts in, hard stop"], ["fade", "Cuts in, fade out"]];
+const MODE_NOTE = { backchannel: "backchannel", cut: "cuts in", fade: "cuts in, fades" };
+
+function lineRow(sp, tx, mode = "") {
   const names = EP.plan.speakers.map((s) => s.name);
-  return `<div class="ln" style="--c:${chanOf(sp)}">
-    <select aria-label="Speaker">${names.map((n) => `<option ${n === sp ? "selected" : ""}>${esc(n)}</option>`).join("")}</select>
+  return `<div class="ln" style="--c:${chanOf(sp)}" data-mode="${mode}">
+    <span class="who"><select class="sp" aria-label="Speaker">${names.map((n) => `<option ${n === sp ? "selected" : ""}>${esc(n)}</option>`).join("")}</select>
+      <select class="md" aria-label="How this line starts" title="Backchannel: a quick reaction over the previous line. Cuts in: starts before the previous line ends, which stops dead or fades out.">
+        ${MODES.map(([v, t]) => `<option value="${v}" ${v === mode ? "selected" : ""}>${t}</option>`).join("")}</select></span>
     <textarea class="auto" rows="1" lang="${EP.request.lang}" aria-label="Line">${esc(tx)}</textarea>
     <span class="acts"><button class="btn btn-quiet" type="button" data-act="insLine" aria-label="Insert a line below">+</button>
       <button class="btn btn-quiet" type="button" data-act="delLine" aria-label="Delete this line">×</button></span></div>`;
@@ -296,7 +302,7 @@ function sheet(s, i) {
       <span class="hint">${s.minutes} min${lines.length ? `, ${lines.length} lines` : ""}</span>
       <span class="goal">${esc(s.goal || "")}</span></header>
     ${s.open_issues?.length ? `<ul class="issues">${s.open_issues.map((x) => `<li>${esc(x)}</li>`).join("")}</ul>` : ""}
-    <div class="lines">${lines.map(([sp, tx]) => lineRow(sp, tx)).join("") || '<p class="hint">Not written yet.</p>'}</div>
+    <div class="lines">${lines.map(([sp, tx, mode]) => lineRow(sp, tx, mode)).join("") || '<p class="hint">Not written yet.</p>'}</div>
     <footer>
       <button class="btn btn-primary" data-act="saveSeg" data-i="${i}" ${dirty.has(i) ? "" : "disabled"}>Save edits</button>
       <button class="btn" type="button" data-act="addLine" data-i="${i}">Add line</button>
@@ -320,7 +326,7 @@ function collectPlan() {
   });
   return p;
 }
-const collectSeg = (i) => $$(`.sheet[data-seg="${i}"] .ln`).map((ln) => [$("select", ln).value, $("textarea", ln).value]);
+const collectSeg = (i) => $$(`.sheet[data-seg="${i}"] .ln`).map((ln) => [$(".sp", ln).value, $("textarea", ln).value, $(".md", ln).value]);
 function markDirty(i) {
   dirty.add(i);
   const b = $(`.sheet[data-seg="${i}"] [data-act=saveSeg]`);
@@ -381,7 +387,7 @@ const ACTIONS = {
   },
   addLine: (b) => {
     const i = +b.dataset.i, rows = $$(`.sheet[data-seg="${i}"] .ln`), names = EP.plan.speakers.map((s) => s.name);
-    const last = rows.length ? $("select", rows[rows.length - 1]).value : names[1];
+    const last = rows.length ? $(".sp", rows[rows.length - 1]).value : names[1];
     const box = $(`.sheet[data-seg="${i}"] .lines`);
     if (!rows.length) box.innerHTML = "";
     box.insertAdjacentHTML("beforeend", lineRow(names.find((n) => n !== last) || names[0], ""));
@@ -389,7 +395,7 @@ const ACTIONS = {
     markDirty(i);
   },
   insLine: (b) => {
-    const row = b.closest(".ln"), names = EP.plan.speakers.map((s) => s.name), cur = $("select", row).value;
+    const row = b.closest(".ln"), names = EP.plan.speakers.map((s) => s.name), cur = $(".sp", row).value;
     row.insertAdjacentHTML("afterend", lineRow(names.find((n) => n !== cur) || cur, ""));
     $("textarea", row.nextElementSibling).focus();
     markDirty(+b.closest(".sheet").dataset.seg);
@@ -442,7 +448,8 @@ document.addEventListener("change", (e) => {
   if (t.form?.id === "newform") updateNewForm(t.form);
   const ln = t.closest(".ln");
   if (ln && t.tagName === "SELECT") {
-    ln.style.setProperty("--c", chanOf(t.value));
+    if (t.matches(".sp")) ln.style.setProperty("--c", chanOf(t.value));
+    else ln.dataset.mode = t.value;
     markDirty(+t.closest(".sheet").dataset.seg);
   }
 });

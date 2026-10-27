@@ -188,11 +188,18 @@ details.trace summary { cursor: pointer; font-weight: 600; }
 .ln { display: grid; grid-template-columns: 112px 1fr auto; gap: 10px; padding: 5px 0; border-top: 1px solid var(--line);
       align-items: start; }
 .ln:first-child { border-top: 0; }
-.ln select { color: var(--c); font-weight: 720; font-stretch: 80%; border-color: transparent; padding: 4px 2px;
+.ln .who { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+.ln .md { color: var(--muted); font-size: 12px; font-weight: 400; padding: 1px 2px; background: transparent; }
+.ln .md, .ln .md:hover { border-color: transparent; }
+.ln[data-mode=backchannel] { margin-left: 28px; }
+.ln[data-mode=backchannel] textarea { font-size: 14px; font-style: italic; }
+.ln[data-mode=cut] textarea, .ln[data-mode=fade] textarea { box-shadow: inset 3px 0 0 var(--c); }
+.al .who small { display: block; color: var(--muted); font-size: 11px; font-weight: 400; }
+.ln .sp { color: var(--c); font-weight: 720; font-stretch: 80%; border-color: transparent; padding: 4px 2px;
              background: transparent; }
 .ln textarea { font: 16px/1.6 var(--text); border-color: transparent; padding: 3px 6px; resize: none; overflow: hidden;
                background: transparent; }
-.ln textarea:hover, .ln select:hover { border-color: var(--line); }
+.ln textarea:hover, .ln .sp:hover { border-color: var(--line); }
 .ln textarea:focus { border-color: var(--muted); background: var(--sheet); }
 .ln .acts { display: flex; opacity: .4; }
 .ln:hover .acts, .ln:focus-within .acts { opacity: 1; }
