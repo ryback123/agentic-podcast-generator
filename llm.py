@@ -10,7 +10,7 @@ import time
 
 from openai import OpenAI
 
-_client = OpenAI(base_url=os.environ.get("LLM_BASE_URL", "http://bodhanai-node004:8031/v1"),
+_client = OpenAI(base_url=os.environ.get("LLM_BASE_URL", "http://localhost:8000/v1"),
                  api_key=os.environ.get("LLM_API_KEY", "EMPTY"), timeout=900)
 MODEL = os.environ.get("LLM_MODEL", "gemma-4-31b")
 _lock = threading.Lock()

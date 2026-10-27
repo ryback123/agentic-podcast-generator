@@ -26,7 +26,7 @@ from checks import BANNED_OPENERS, LANGS, check_segment, chars_per_min, parse_tu
 import search
 
 REPO = Path(__file__).resolve().parent
-RUNS = Path(os.environ.get("PODCAST_RUNS", "/projects/data/ttsteam/nikhil/runs/podcast_agent/runs"))
+RUNS = Path(os.environ.get("PODCAST_RUNS") or Path.home() / "podcast_runs")  # empty counts as unset
 
 CODE_MIX = {
     "light": "Mostly {lang}; English only for technical terms that people normally say in English.",

@@ -1,51 +1,104 @@
-# podcast_agent
+# Podcast Agent
 
-Course project: an agentic podcast generator with a web UI. Given a topic (plus optional audience/level notes),
-it plans, researches and writes a 10–15 minute, n-speaker, code-mixed podcast script in English or one of
-11 major Indian languages (hi, bn, mr, te, ta, gu, kn, ml, or, pa, as), then turns it into audio.
+An agentic podcast generator with a web UI. Give it a topic, plus optional notes on audience and level. It plans the
+episode, researches the topic on the web, and writes a 10–15 minute script for 2–5 speakers. Then it turns the script
+into audio with a TTS model.
 
-## Agents
+Scripts can be in English or code-mixed with one of 11 Indian languages: Hindi, Bengali, Marathi, Telugu, Tamil,
+Gujarati, Kannada, Malayalam, Odia, Punjabi and Assamese. The mix can be light, medium or heavy.
+
+## How it works
+
+Five agents hand the episode along. Each step can also be run, edited or redone from the UI.
 
 | Agent | Tools | Decides |
 |---|---|---|
-| Producer (`produce`) | — | cast (name, gender, role), format, segment plan, research questions |
-| Researcher (`research`) | `search`, `read`, `done` (Wikipedia for now) | what to search/read next, when to stop |
-| Writer (`write_segment`) | — | writes each segment from its facts; revises on critic feedback; follows user notes |
-| Critics (`review`) | code checks (`checks.py`), fact-checker, editor | issues that send a segment back (only "major" ones; max 2 rounds) |
-| Audio (`audio.py`) | TTS API | one call per line (cached by voice+text+take), stitched with pauses and level matching |
+| Producer | — | cast (name, gender, role), format, segment plan, research questions |
+| Researcher | `search` (web via Tavily, Wikipedia), `read`, `done` | what to search and read next, and when to stop |
+| Writer | — | writes each segment from the facts found; revises after critic feedback; follows user notes |
+| Critics | code checks, fact-checker, editor | which issues send a segment back for a rewrite (major ones only, at most 2 rounds) |
+| Audio | TTS endpoint | one call per line (cached), stitched with pauses and level matching |
 
-Tools are called through plain-text JSON replies, so any OpenAI-compatible chat endpoint works
-(no native function calling needed).
+- **No native tool calling.** Agents call their tools by replying in plain-text JSON, so any OpenAI-compatible
+  chat endpoint works.
+- **Deterministic checks.** The code checks in `checks.py` cover line format, length against the time budget,
+  repeated openers, digits and symbols that TTS reads badly, and script and code-mix balance. For example, they flag
+  Hindi written in Latin letters, or too much English for the chosen mix.
+
+## Setup
+
+Python 3.10+ and `ffmpeg` on the PATH (used for audio stitching).
+
+```bash
+pip install -r requirements.txt
+cp .env.example .env        # fill in the endpoints and keys
+set -a; . ./.env; set +a
+```
+
+| Variable | Needed for | Notes |
+|---|---|---|
+| `LLM_BASE_URL`, `LLM_MODEL`, `LLM_API_KEY` | everything | any OpenAI-compatible chat endpoint; built with Gemma 4 31B |
+| `TAVILY_API_KEY` | web search | optional; without it research uses Wikipedia only. A basic search costs 1 credit |
+| `CONTACT_EMAIL` | Wikipedia | sent in the User-Agent, as Wikimedia's policy asks; anonymous clients get throttled |
+| `TTS_BASE_URL`, `TTS_MODEL`, `TTS_API_KEY`, `TTS_VOICES` | audio | OpenAI-style `POST /audio/speech`; `TTS_VOICES` is a comma-separated list |
+| `PODCAST_RUNS` | — | where episodes are saved (default `~/podcast_runs`) |
+
+To serve a model yourself, for example: `vllm serve google/gemma-4-31B-it --served-model-name gemma-4-31b`.
 
 ## Web app
 
 ```bash
-cd /projects/data/ttsteam/nikhil/podcast_agent
-export LLM_BASE_URL=http://bodhanai-node004:8031/v1 LLM_MODEL=gemma-4-31b LLM_API_KEY=EMPTY      # script model
-export TTS_BASE_URL=http://bodhanai-node040:8032/v1 TTS_VOICES=Ira,Aisha,Siya,Zoya              # optional: audio
-/projects/data/ttsteam/miniconda3/envs/gemma4/bin/python -m uvicorn app:app --host 127.0.0.1 --port 8840
+python -m uvicorn app:app --host 127.0.0.1 --port 8842
 ```
 
-The UI walks through Plan → Research → Script → Audio. Every step can be edited or re-run: edit the cast and
-outline, re-run research, edit any line, review or fix a segment, rewrite a segment with a note, pick voices,
-re-roll a single line's audio. "Make the whole episode" runs everything in one go. Long steps run as background
-jobs; the page polls and shows the agents' activity live.
+Open http://127.0.0.1:8842. The UI walks through Plan → Research → Script → Audio:
 
-Switching to the course APIs = changing the `LLM_*` / `TTS_*` env vars.
+- **Plan:** edit the cast and outline.
+- **Research:** run research again.
+- **Script:** edit any line, review or fix a segment, or rewrite a segment with a note.
+- **Audio:** pick voices and re-roll a single line's audio.
 
-## CLI
+"Make the whole episode" runs every step in one go. Long steps run as background jobs while the page shows what the
+agents are doing.
+
+To share it from a machine with no public address: `cloudflared tunnel --url http://127.0.0.1:8842`.
+
+## Command line
 
 ```bash
 python podcast.py --topic "How UPI payments work" --description "for class 8 students" --lang hi --minutes 12
-python checks.py && python audio.py   # self-tests (no model calls)
+python podcast.py --help        # speakers, code-mix level, research steps, revisions, seed, output dir
+python checks.py && python audio.py   # self-tests, no model calls
 ```
 
-## Where things live
+## Output
 
-Episodes: `/projects/data/ttsteam/nikhil/runs/podcast_agent/runs/<timestamp>_<lang>_<topic>_<id>/`
-(`episode.json` = plan, facts, script, agent log, audio state; `script.json`/`script.txt`; `calls.jsonl` = every
-LLM prompt/response; `audio/` line clips; `episode.mp3`). Override with `PODCAST_RUNS`.
+Each episode gets its own folder, `$PODCAST_RUNS/<timestamp>_<lang>_<topic>_<id>/`, containing:
 
-Dev services (local stand-ins for the course APIs), under `/projects/data/ttsteam/nikhil/runs/podcast_agent/services/`:
-`gemma31b_local/serve.sbatch` (vLLM, node004, port 8031) and `tts_local/serve.sbatch`
-(`dev/tts_standin.py`, rumik-oss-1, node040, port 8032).
+| File | Contents |
+|---|---|
+| `episode.json` | the plan, facts, script, agent log and audio state |
+| `script.txt`, `script.json` | the final script |
+| `calls.jsonl` | every LLM prompt and response |
+| `audio/` | line clips |
+| `episode.mp3` | the stitched episode |
+
+## Files
+
+| File | Role |
+|---|---|
+| `podcast.py` | agents, prompts, episode state, CLI |
+| `checks.py` | deterministic script checks and language and script tables |
+| `search.py` | Tavily and Wikipedia search and page reading |
+| `llm.py` | chat client and JSON reply parsing |
+| `audio.py` | TTS calls and stitching |
+| `app.py`, `static/` | web app (FastAPI backend, plain JS front end with no build step) |
+| `dev/tts_standin.py` | local OpenAI-style TTS server, used for development before the course TTS API |
+
+## Development setup
+
+Course runs on our cluster:
+
+- Episodes are saved under `/projects/data/ttsteam/nikhil/runs/podcast_agent/runs/`.
+- Service scripts are in `/projects/data/ttsteam/nikhil/runs/podcast_agent/services/`: `gemma31b_local/` (vLLM,
+  Gemma 4 31B), `tts_local/` (the TTS stand-in) and `web/` (the app and its Cloudflare tunnel).

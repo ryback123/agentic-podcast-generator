@@ -1,7 +1,7 @@
 """Local stand-in for the course TTS API (development only): OpenAI-style POST /v1/audio/speech served by
 rumik-oss-1 (voices Ira, Aisha, Siya, Zoya; CC-BY-NC licence, fine for coursework). One clip at a time on one GPU.
 
-  python dev/tts_standin.py --model /projects/data/ttsteam/nikhil/models/rumik-oss-1 --port 8032   # env qwen-codec
+  python dev/tts_standin.py --model path/to/rumik-oss-1 --port 8032   # needs torch, transformers, soundfile
 Then run the web app with TTS_BASE_URL=http://<host>:8032/v1 TTS_VOICES=Ira,Aisha,Siya,Zoya
 """
 import argparse
