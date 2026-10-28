@@ -107,3 +107,7 @@ Course runs on our cluster:
 - Episodes are saved under `/projects/data/ttsteam/nikhil/runs/podcast_agent/runs/`.
 - Service scripts are in `/projects/data/ttsteam/nikhil/runs/podcast_agent/services/`: `gemma31b_local/` (vLLM,
   Gemma 4 31B), `tts_local/` (the TTS stand-in) and `web/` (the app and its Cloudflare tunnel).
+
+## Licence
+
+MIT, see [LICENSE](LICENSE).
