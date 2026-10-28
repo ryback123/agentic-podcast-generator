@@ -17,7 +17,7 @@ MAX_BACKCHANNEL_WORDS = 4
 # One word may start at most this share of an episode's lines. In run langs_20261029, one-word habits ("yes",
 # "meaning") started 14-22% of lines, while ordinary "but" or "so" stayed near 10%.
 FIRST_WORD_SHARE = 0.12
-GLUED = re.compile(r"[A-Za-z][\u0900-\u0DFF]|[\u0900-\u0DFF][A-Za-z]")  # an English word and an Indic ending, no hyphen
+DANGLING = re.compile(r"[A-Za-z]-(?=$|[^\w])")  # a hyphen with no ending after it ("Immunity-।")
 MAX_PER_KIND = 5  # word problems of one kind reported per round; the rest come up in the next round
 # Problems that word edits cannot fix, so the writer rewrites the segment
 STRUCTURAL = ("No dialogue lines", "Not a valid dialogue line", "too long for one turn", "The segment is ",
@@ -41,6 +41,13 @@ def char_script(c):
 
 def word_script(w):
     return Counter(char_script(c) for c in w).most_common(1)[0][0]
+
+
+def glued(tok):
+    """An English word and an Indic ending written as one word ('bodyಗೆ'); they take a hyphen. Only letters count, so
+    punctuation such as the Devanagari danda '।' after an English word is fine."""
+    s = [char_script(c) if unicodedata.category(c)[0] in "LM" else None for c in tok]
+    return any(a and b and a != b and "Latin" in (a, b) and "other" not in (a, b) for a, b in zip(s, s[1:]))
 
 
 def check_segment(turns, bad, lang, code_mix, budget_chars, history):
@@ -67,19 +74,23 @@ def check_segment(turns, bad, lang, code_mix, budget_chars, history):
         if mode != "backchannel" and tx.lower().startswith(BANNED_OPENERS):
             issues.append(f"Line {k}: starts with a stock phrase; start it differently.")
 
-    glued, mixed, wrong = [], [], []
+    joined, mixed, wrong = [], [], []
     for k, (_, tx, _) in enumerate(turns, 1):
         for tok in tx.split():
             scripts = {char_script(c) for c in tok if unicodedata.category(c)[0] in "LM"} - {"Latin", "other"}
             if len(scripts) > 1:
                 mixed.append(f"Line {k}: {tok!r} mixes letters from two scripts; spell it correctly in {script} script.")
-            elif lang != "en" and GLUED.search(tok):
-                glued.append(f"Line {k}: {tok!r} joins an English word and a {name} ending; put a hyphen between them.")
+            elif lang != "en" and glued(tok):
+                joined.append(f"Line {k}: {tok!r} joins an English word and a {name} ending; put a hyphen between them.")
+            elif DANGLING.search(tok):
+                joined.append(f"Line {k}: {tok!r} has a hyphen with nothing after it; remove the hyphen.")
         for w in words(tx):
-            if (s := word_script(w)) not in (script, "Latin"):
+            if word_script(w) == "Latin" and not w.isascii():
+                wrong.append(f"Line {k}: {w!r} is not an English word; write it in plain English or in {name}.")
+            elif (s := word_script(w)) not in (script, "Latin"):
                 wrong.append(f"Line {k}: {w!r} is in {s} script; write it in {script} script or as an English word in "
                              f"Latin letters.")
-    issues += mixed[:MAX_PER_KIND] + glued[:MAX_PER_KIND] + wrong[:MAX_PER_KIND]
+    issues += mixed[:MAX_PER_KIND] + joined[:MAX_PER_KIND] + wrong[:MAX_PER_KIND]
 
     counts = Counter(word_script(w) for _, tx, _ in turns for w in words(tx))
     total = sum(counts.values()) or 1
@@ -115,8 +126,8 @@ def check_segment(turns, bad, lang, code_mix, budget_chars, history):
         firsts[first] += 1
         n += 1
         if firsts[first] > max(3, FIRST_WORD_SHARE * n):
-            overused.append(f"Line {k}: {firsts[first]} of the {n} lines so far start with {first!r}; start this one "
-                            f"differently.")
+            overused.append(f"Line {k}: starts with {first!r}, which already starts {firsts[first]} of the {n} lines so "
+                            f"far; replace or drop that first word.")
     return issues + overused[:MAX_PER_KIND]
 
 

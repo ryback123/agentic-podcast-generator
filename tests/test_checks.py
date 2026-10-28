@@ -51,15 +51,18 @@ def test_fillers_and_cut_ins():
 def test_one_word_may_not_start_too_many_lines():
     history = [("ARJUN", f"ஆமா, line {k}", "") for k in range(3)] + [("ARJUN", f"other {k}", "") for k in range(20)]
     iss = check_segment([("KAVYA", "ஆமா, இன்னொரு line", "")], [], "ta", "heavy", 15, history)
-    assert any("start with 'ஆமா'" in i for i in iss), iss  # 4 of 24 lines, over the 12% limit
+    assert any("starts with 'ஆமா'" in i for i in iss), iss  # 4 of 24 lines, over the 12% limit
     iss = check_segment([("KAVYA", "ஆமா, இன்னொரு line", "")], [], "ta", "heavy", 15, history[1:])
-    assert not any("start with" in i for i in iss), iss  # 3 of 23: allowed
+    assert not any("starts with 'ஆமா'" in i for i in iss), iss  # 3 of 23: allowed
 
 
 def test_word_level_script_problems():
     iss = issues("ये vaccineका काम है", budget=19)  # English word glued to a Hindi ending
     assert any("put a hyphen" in i and "'vaccineका'" in i for i in iss), iss
     assert not any("hyphen" in i for i in issues("ये vaccine-का काम है", budget=20))
+    assert not any("hyphen" in i for i in issues("ये non-self है। ये toxin।", budget=23))  # a danda is not an ending
+    assert any("nothing after it" in i for i in issues("ये Immunity-। है", budget=14))
+    assert any("'espécie' is not an English word" in i for i in issues("ये espécie है", budget=12))
     iss = check_segment([("SAGAR", "ଆଜି ଆମେ అసଲରେ discuss କରିବା", "")], [], "or", "medium", 29, [])
     assert any("mixes letters from two scripts" in i for i in iss), iss  # Odia word with Telugu letters
     iss = issues("यह வணக்கம் है")  # a Tamil word in a Hindi line
