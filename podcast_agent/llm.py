@@ -1,18 +1,17 @@
 """Thin client for any OpenAI-compatible chat endpoint (local vLLM now, the course API later).
 
-Config via env: LLM_BASE_URL, LLM_MODEL, LLM_API_KEY. Only plain chat completions are used,
+Settings: LLM_BASE_URL, LLM_MODEL, LLM_API_KEY (config.py). Only plain chat completions are used,
 so nothing depends on the endpoint supporting tool calling or JSON mode.
 """
 import json
-import os
 import threading
 import time
 
 from openai import OpenAI
 
-_client = OpenAI(base_url=os.environ.get("LLM_BASE_URL", "http://localhost:8000/v1"),
-                 api_key=os.environ.get("LLM_API_KEY", "EMPTY"), timeout=900)
-MODEL = os.environ.get("LLM_MODEL", "gemma-4-31b")
+from .config import LLM_API_KEY, LLM_BASE_URL, LLM_MODEL as MODEL
+
+_client = OpenAI(base_url=LLM_BASE_URL, api_key=LLM_API_KEY, timeout=900)
 _lock = threading.Lock()
 
 

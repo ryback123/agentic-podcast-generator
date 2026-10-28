@@ -1,7 +1,6 @@
-"""Search tools for the research agent: whole-web search via Tavily (needs TAVILY_API_KEY; 1 credit per basic
-search, page text included) and Wikipedia (free, no key). Hits share one shape: {id, title, snippet, url[, text]}."""
+"""The researcher's tools: whole-web search via Tavily (needs TAVILY_API_KEY; 1 credit per basic search, page text
+included) and Wikipedia (free, no key). Hits share one shape: {id, title, snippet, url[, text]}."""
 import json
-import os
 import re
 import socket
 import threading
@@ -10,10 +9,11 @@ import urllib.error
 import urllib.parse
 import urllib.request
 
-TAVILY_KEY = os.environ.get("TAVILY_API_KEY", "")
+from ..config import CONTACT_EMAIL, TAVILY_API_KEY as TAVILY_KEY
+
 SOCIAL = ["instagram.com", "facebook.com", "x.com", "twitter.com", "youtube.com", "tiktok.com", "pinterest.com", "reddit.com", "quora.com"]
 # Wikimedia policy: identify the client with contact info, or anonymous HTTP/1.1 requests get throttled (429)
-_UA = {"User-Agent": f"podcast-agent/0.1 ({os.environ.get('CONTACT_EMAIL') or 'no contact set'}) python-urllib"}
+_UA = {"User-Agent": f"podcast-agent/0.1 ({CONTACT_EMAIL or 'no contact set'}) python-urllib"}
 # ponytail: per-process throttle for Wikipedia's anonymous limits; drop it with a paid search API
 _MIN_INTERVAL, _last, _lock = 1.0, [0.0], threading.Lock()
 

@@ -11,20 +11,22 @@ Gujarati, Kannada, Malayalam, Odia, Punjabi and Assamese. The mix can be light, 
 
 Five agents hand the episode along. Each step can also be run, edited or redone from the UI.
 
-| Agent | Tools | Decides |
-|---|---|---|
-| Producer | — | cast (name, gender, role), format, segment plan, research questions |
-| Researcher | `search` (web via Tavily, Wikipedia), `read`, `done` | what to search and read next, and when to stop |
-| Writer | — | writes each segment from the facts found; revises after critic feedback; follows user notes |
-| Critics | code checks, fact-checker, editor | which issues send a segment back for a rewrite (major ones only, at most 2 rounds) |
-| Audio | TTS endpoint | one call per line (cached), stitched with pauses and level matching |
+| Agent | Code | Tools | Decides |
+|---|---|---|---|
+| Producer | `agents/producer.py` | — | cast (name, gender, role), format, segment plan, research questions |
+| Researcher | `agents/researcher.py` | `search` (web via Tavily, Wikipedia), `read`, `done` | what to search and read next, and when to stop |
+| Writer | `agents/writer.py` | — | writes each segment from the facts found; revises after critic feedback; follows user notes |
+| Critics | `agents/writer.py`, `agents/checks.py` | code checks, fact-checker, editor | which issues send a segment back for a rewrite (major ones only, at most 2 rounds) |
+| Audio | `audio/` | TTS endpoint | one call per line (cached), mixed with pauses, fillers and cut-ins |
+
+All prompts are in `agents/prompts.py`. `pipeline.py` runs the agents in order.
 
 - **No native tool calling.** Agents call their tools by replying in plain-text JSON, so any OpenAI-compatible
   chat endpoint works.
 - **Overlapping speech.** The writer adds backchannels (a listener's quick "hmm" or "right" while the other person
   talks) and cut-ins (someone starts before the other finishes). In the audio, a backchannel plays quietly in a pause
   of the other line, which carries on. A cut-in starts before the other line ends, which then stops dead or fades out.
-- **Deterministic checks.** The code checks in `checks.py` cover line format, length against the time budget,
+- **Deterministic checks.** The code checks in `agents/checks.py` cover line format, length against the time budget,
   repeated openers, digits and symbols that TTS reads badly, and script and code-mix balance. For example, they flag
   Hindi written in Latin letters, or too much English for the chosen mix.
 
@@ -33,7 +35,7 @@ Five agents hand the episode along. Each step can also be run, edited or redone 
 Python 3.10+ and `ffmpeg` on the PATH (used for audio stitching).
 
 ```bash
-pip install -r requirements.txt
+pip install -e .            # or: pip install -e ".[dev]" to run the tests
 cp .env.example .env        # fill in the endpoints and keys
 set -a; . ./.env; set +a
 ```
@@ -51,7 +53,7 @@ To serve a model yourself, for example: `vllm serve google/gemma-4-31B-it --serv
 ## Web app
 
 ```bash
-python -m uvicorn app:app --host 127.0.0.1 --port 8842
+python -m uvicorn podcast_agent.web.app:app --host 127.0.0.1 --port 8842
 ```
 
 Open http://127.0.0.1:8842. The UI walks through Plan → Research → Script → Audio:
@@ -71,9 +73,9 @@ To share it from a machine with no public address: `cloudflared tunnel --url htt
 ## Command line
 
 ```bash
-python podcast.py --topic "How UPI payments work" --description "for class 8 students" --lang hi --minutes 12
-python podcast.py --help        # speakers, code-mix level, research steps, revisions, seed, output dir
-python checks.py && python audio.py && python test_podcast.py   # self-tests, no model calls
+python -m podcast_agent --topic "How UPI payments work" --description "for class 8 students" --lang hi --minutes 12
+python -m podcast_agent --help   # speakers, code-mix level, research steps, revisions, seed, output dir
+python -m pytest                 # tests, no model calls
 ```
 
 ## Output
@@ -88,17 +90,34 @@ Each episode gets its own folder, `$PODCAST_RUNS/<timestamp>_<lang>_<topic>_<id>
 | `audio/` | line clips |
 | `episode.mp3` | the stitched episode |
 
-## Files
+## Code layout
 
-| File | Role |
-|---|---|
-| `podcast.py` | agents, prompts, episode state, CLI |
-| `checks.py` | deterministic script checks and language and script tables |
-| `search.py` | Tavily and Wikipedia search and page reading |
-| `llm.py` | chat client and JSON reply parsing |
-| `audio.py` | TTS calls and stitching |
-| `app.py`, `static/` | web app (FastAPI backend, plain JS front end with no build step) |
-| `dev/tts_standin.py` | local OpenAI-style TTS server, used for development before the course TTS API |
+```
+podcast_agent/
+├── __main__.py        command line
+├── config.py          every setting (environment variables)
+├── languages.py       the 12 languages, their scripts, speaking pace, code-mix levels
+├── llm.py             chat client for any OpenAI-compatible endpoint, JSON replies
+├── episode.py         episode.json: what it holds, saving and loading; the script line format
+├── edits.py           edits from the web app: the plan (renaming speakers), a segment's lines
+├── pipeline.py        the order the agents run in
+├── agents/
+│   ├── prompts.py     every prompt
+│   ├── producer.py    plans the episode
+│   ├── researcher.py  research tool loop
+│   ├── search.py      the researcher's tools: Tavily and Wikipedia
+│   ├── writer.py      writes each segment; fact-checker and editor review it
+│   └── checks.py      code checks on each segment
+├── audio/
+│   ├── tts.py         TTS call per line, voices, takes; builds the episode files
+│   └── mix.py         joins clips: pauses, fillers, cut-ins
+└── web/
+    ├── app.py         API routes
+    ├── jobs.py        background jobs, one per episode at a time
+    └── static/        the browser UI (plain JS, no build step)
+tests/                 python -m pytest
+dev/tts_standin.py     local OpenAI-style TTS server, used for development before the course TTS API
+```
 
 ## Development setup
 

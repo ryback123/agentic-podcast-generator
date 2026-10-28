@@ -1,0 +1,21 @@
+[project]
+name = "agentic-podcast-generator"
+version = "0.1.0"
+description = "Agentic podcast generator: research, script and audio in English and 11 Indian languages, with a web UI"
+readme = "README.md"
+license = "MIT"
+requires-python = ">=3.10"
+dependencies = ["fastapi>=0.135", "uvicorn>=0.44", "openai>=2.0", "numpy>=2.0"]
+
+[project.optional-dependencies]
+dev = ["pytest"]
+
+[build-system]
+requires = ["setuptools>=77"]
+build-backend = "setuptools.build_meta"
+
+[tool.setuptools.packages.find]
+include = ["podcast_agent*"]
+
+[tool.setuptools.package-data]
+"podcast_agent.web" = ["static/*"]
