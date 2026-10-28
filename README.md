@@ -139,6 +139,8 @@ Course runs on our cluster:
     the same sweep after the word-level critics and the fixes it prompted (code `c8736f5`).
   - [wordcritic2_20261029](</projects/data/ttsteam/nikhil/runs/podcast_agent_evals/runs/wordcritic2_20261029/summary.md>):
     the same again after fixing the hyphen check (code `02c8093`).
+  - [wordcritic3_20261029](</projects/data/ttsteam/nikhil/runs/podcast_agent_evals/runs/wordcritic3_20261029/summary.md>):
+    the same again after fixing the accented-word check and cut-off replies.
 
 ## Licence
 
