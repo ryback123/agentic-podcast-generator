@@ -135,6 +135,8 @@ Course runs on our cluster:
   - [langs_20261029](</projects/data/ttsteam/nikhil/runs/podcast_agent_evals/runs/langs_20261029/summary.md>): one
     episode in each of 10 Indian languages with the same settings, to find language-specific script problems (code
     `0607294`).
+  - [wordcritic_20261029](</projects/data/ttsteam/nikhil/runs/podcast_agent_evals/runs/wordcritic_20261029/summary.md>):
+    the same sweep after the word-level critics and the fixes it prompted (code `c8736f5`).
 
 ## Licence
 
