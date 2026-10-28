@@ -85,7 +85,7 @@ def check_segment(turns, bad, lang, code_mix, budget_chars, history):
             elif DANGLING.search(tok):
                 joined.append(f"Line {k}: {tok!r} has a hyphen with nothing after it; remove the hyphen.")
         for w in words(tx):
-            if word_script(w) == "Latin" and not w.isascii():
+            if any(0xC0 <= ord(c) <= 0x24F for c in w):  # accented Latin letters ("espécie"), not English
                 wrong.append(f"Line {k}: {w!r} is not an English word; write it in plain English or in {name}.")
             elif (s := word_script(w)) not in (script, "Latin"):
                 wrong.append(f"Line {k}: {w!r} is in {s} script; write it in {script} script or as an English word in "

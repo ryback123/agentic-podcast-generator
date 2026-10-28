@@ -27,8 +27,8 @@ def chat(prompt, agent, temperature=0.7, max_tokens=4000, log=None):
                "seconds": round(time.time() - t, 1)}
         with _lock, open(log, "a") as f:
             f.write(json.dumps(rec, ensure_ascii=False) + "\n")
-    if finish == "length":
-        raise RuntimeError(f"{agent}: reply cut off at max_tokens={max_tokens}")
+    if finish == "length":  # usually the model looping; callers treat it like an unreadable reply
+        raise ValueError(f"{agent}: reply cut off at max_tokens={max_tokens}")
     return out
 
 
@@ -41,10 +41,9 @@ def parse_json(text):
 
 
 def chat_json(prompt, agent, **kw):
-    out = chat(prompt, agent, **kw)
     try:
-        return parse_json(out)
-    except ValueError as e:  # one retry, telling the model what went wrong
+        return parse_json(chat(prompt, agent, **kw))
+    except ValueError as e:  # cut off or not JSON: one retry, telling the model what went wrong
         out = chat(f"{prompt}\n\nYour previous reply was not valid JSON ({e}). Reply with only the JSON object.",
                    agent, **kw)
         return parse_json(out)

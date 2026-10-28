@@ -67,3 +67,16 @@ def test_flow_problem_rewrites_and_unreadable_critic_is_recorded(tmp_path, model
     assert "writer:1:rev1" in calls  # the flow problem had no words to change
     assert ep["plan"]["segments"][0]["open_issues"] == []
     assert any("review skipped" in i for e in ep["log"] for i in e.get("issues", []))  # round 0 went on without it
+
+
+def test_chat_json_retries_a_cut_off_reply(monkeypatch):
+    from podcast_agent import llm
+    replies = [ValueError("editor:1: reply cut off at max_tokens=4000"), '{"issues": []}']
+
+    def chat(prompt, agent, **kw):
+        r = replies.pop(0)
+        if isinstance(r, Exception):
+            raise r
+        return r
+    monkeypatch.setattr(llm, "chat", chat)
+    assert llm.chat_json("p", "editor:1") == {"issues": []} and not replies
