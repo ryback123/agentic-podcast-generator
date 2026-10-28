@@ -96,7 +96,8 @@ Rules:
 - No markdown, stage directions, sound effects, or emojis.
 - Short turns: one to three sentences, sometimes just a quick reaction. Vary turn lengths.
 - Speakers react to what was just said, ask follow-up questions, sometimes interrupt or disagree, and use concrete examples and analogies that suit the audience.
-- Do not start turns with stock phrases ({banned}) and do not reuse the same reaction within the episode.
+- The facts come from sources written for experts. Explain each technical term in everyday words when it first comes up, or leave it out; keep only the few terms the listener needs.
+- Do not start turns with stock reactions ({banned}, or the same words in {lang}) and do not reuse the same reaction within the episode. Vary how turns begin: no single word (like yes, so, but, or meaning) should start more than one turn in ten.
 - Speakers never say their own name, except when introducing themselves in the opening.
 - Whenever a speaker's name is said, write it in Latin letters with normal capitalisation (Riya, not RIYA), even inside {lang} sentences.
 - Use the right grammatical gender for each speaker (see the cast).
@@ -133,16 +134,21 @@ Segment:
 {numbered}
 
 Report each claim that contradicts the facts, and each specific fact (a number, date, name, or technical detail) that the facts list does not support.
+Fix each one by changing as few words as possible. "find" is the exact words to change, copied character for character from that line; "replace" is what the line should say instead, in the same language mix, with numbers as words ("" removes the words).
 Severity: "major" if a listener would be misinformed (wrong or invented fact); "minor" for wording that is loose but not wrong.
-Reply with only JSON: {{"issues": [{{"line": int, "severity": "major" | "minor", "claim": str, "problem": str, "fix": str}}]}} (an empty list if everything is supported)."""
+Reply with only JSON: {{"issues": [{{"line": int, "severity": "major" | "minor", "claim": str, "problem": str, "find": str, "replace": str}}]}} (an empty list if everything is supported)."""
 
 EDITOR = """You are the story editor of a podcast for {audience}. This is {role}. Review it and report only concrete problems of these kinds:
-1. Level: too advanced or too childish for the audience, or jargon left unexplained.
+1. Level: too advanced or too childish for the audience, or a technical term left unexplained.
 2. Speech: lines that sound written rather than spoken, lecture-like monologues, or unnatural language. Target language: {lang}. {lang_rule}
-3. Characters: a speaker acting outside their role or knowledge. Cast:
+3. Words: {words_rule}.
+4. Characters: a speaker acting outside their role or knowledge. Cast:
 {cast}
-4. Flow: the segment misses its goal ("{goal}"), repeats earlier segments (including ending the same way they did), or does not follow from the previous segment.
-Fixed rules the script must keep (never suggest breaking them): numbers and symbols written as words; no stock openers like {banned}; short turns; lines tagged (backchannel), (cuts in) or (talks over) are deliberate overlaps, and a line cut off mid-sentence before a cut-in is deliberate.
+5. Flow: the segment misses its goal ("{goal}"), repeats earlier segments (including ending the same way they did), or does not follow from the previous segment.
+Fixed rules the script must keep (never suggest breaking them): numbers and symbols written as words; short turns; lines tagged (backchannel), (cuts in) or (talks over) are deliberate overlaps, and a line cut off mid-sentence before a cut-in is deliberate.
+
+Problems the code checks found, to fix as well (each one is major; start its problem with "Code check:"):
+{code}
 
 Earlier segments covered:
 {covered}
@@ -150,8 +156,9 @@ Earlier segments covered:
 Segment:
 {numbered}
 
+Fix each problem by changing as few words as possible. "find" is the exact words to change, copied character for character from that line; "replace" is the new words ("" removes them). To explain a technical term, add a few everyday words or swap it for a plain one. Use "find": "" only for a Flow problem that small edits cannot fix; the segment is then rewritten.
 Severity: "major" if a typical listener would notice it and it hurts the episode; "minor" for polish. Do not report taste-level rewording as major.
-Reply with only JSON: {{"issues": [{{"line": int, "severity": "major" | "minor", "problem": str, "fix": str}}]}} with at most five issues, most important first; an empty list if the segment works."""
+Reply with only JSON: {{"issues": [{{"line": int, "severity": "major" | "minor", "problem": str, "find": str, "replace": str}}]}} with at most eight issues, most important first; an empty list if the segment works."""
 
 
 def fact_lines(facts):

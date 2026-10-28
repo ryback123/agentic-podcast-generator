@@ -57,7 +57,10 @@ def research(ep, max_steps=20):
             sources=sources, search_note=search_note,
             coverage="\n".join(f"{q} [{cov[q]} facts] {t}" for q, t in qs.items()),
             history="\n".join(history[-8:]) or "none yet")
-        act = ask(ep, prompt, "researcher", json_reply=True, temperature=0.3, max_tokens=500)
+        try:
+            act = ask(ep, prompt, "researcher", json_reply=True, temperature=0.3, max_tokens=500)
+        except ValueError:  # not JSON twice (both replies are in calls.jsonl); the next step's history tells the agent
+            act = {"tool": "(a reply that was not valid JSON)"}
         tool, args = act.get("tool"), act.get("args") or {}
         if tool == "done":
             ep["research_stats"] = {"steps": step, "credits": credits}

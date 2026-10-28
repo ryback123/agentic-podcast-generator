@@ -27,7 +27,7 @@ def test_code_mix_and_script():
     assert any("Devanagari script" in i for i in issues("Wahi toh mystery hai, aaj hum samjhenge"))
     iss = issues("Kerala side-ல rush ஆகும் winds coastal areas-ல பயங்கர மழை", lang="ta")  # English-heavy, not romanized
     assert any("are English" in i for i in iss) and not any("romanized" in i for i in iss), iss
-    assert any("wrong script" in i for i in issues("வணக்கம் நண்பர்களே இது payments பற்றி", code_mix="heavy"))
+    assert any("is in Tamil script" in i for i in issues("வணக்கம் நண்பர்களே இது payments பற்றி", code_mix="heavy"))
 
 
 def test_repeats_length_and_stock_openers():
@@ -46,3 +46,29 @@ def test_fillers_and_cut_ins():
     assert sum("must come right after" in i for i in iss) == 2 and any("word or two" in i for i in iss), iss
     assert not any("stock phrase" in i for i in check_segment([("PRIYA", "a line", ""), ("ARJUN", "Exactly", "backchannel")],
                                                              [], "en", "medium", 15, []))
+
+
+def test_one_word_may_not_start_too_many_lines():
+    history = [("ARJUN", f"ஆமா, line {k}", "") for k in range(3)] + [("ARJUN", f"other {k}", "") for k in range(20)]
+    iss = check_segment([("KAVYA", "ஆமா, இன்னொரு line", "")], [], "ta", "heavy", 15, history)
+    assert any("start with 'ஆமா'" in i for i in iss), iss  # 4 of 24 lines, over the 12% limit
+    iss = check_segment([("KAVYA", "ஆமா, இன்னொரு line", "")], [], "ta", "heavy", 15, history[1:])
+    assert not any("start with" in i for i in iss), iss  # 3 of 23: allowed
+
+
+def test_word_level_script_problems():
+    iss = issues("ये vaccineका काम है", budget=19)  # English word glued to a Hindi ending
+    assert any("put a hyphen" in i and "'vaccineका'" in i for i in iss), iss
+    assert not any("hyphen" in i for i in issues("ये vaccine-का काम है", budget=20))
+    iss = check_segment([("SAGAR", "ଆଜି ଆମେ అసଲରେ discuss କରିବା", "")], [], "or", "medium", 29, [])
+    assert any("mixes letters from two scripts" in i for i in iss), iss  # Odia word with Telugu letters
+    iss = issues("यह வணக்கம் है")  # a Tamil word in a Hindi line
+    assert any("'வணக்கம்' is in Tamil script" in i for i in iss), iss
+
+
+def test_which_problems_need_a_rewrite():
+    from podcast_agent.agents.checks import is_structural
+    assert is_structural("The segment is 90 characters; the target is about 900. Expand it.")
+    assert is_structural("Line 3: a (cuts in) line must come right after a line by another speaker in this segment.")
+    assert not is_structural("Line 3: contains digits; write numbers as spoken words.")
+    assert not is_structural("Line 2: 'bodyಗೆ' joins an English word and a Kannada ending; put a hyphen between them.")

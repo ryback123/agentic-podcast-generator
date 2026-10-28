@@ -49,4 +49,6 @@ def lang_rule(lang, code_mix):
     name, script, _ = LANGS[lang]
     if lang == "en":
         return "Natural spoken English, the way Indian podcast hosts talk."
-    return CODE_MIX[code_mix].format(lang=name) + f" Write {name} words in {script} script and English words in Latin script."
+    return (CODE_MIX[code_mix].format(lang=name) + f" Write {name} words in {script} script and every English word in Latin "
+            f"letters, even everyday ones like body or doctor (never spell an English word in {script} script). When a "
+            f"{name} ending attaches to an English word, put a hyphen between them.")

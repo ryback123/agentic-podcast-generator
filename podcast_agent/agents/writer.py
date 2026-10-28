@@ -1,10 +1,12 @@
 """Writer agent and its critics. The writer drafts a segment; the code checks (checks.py), a fact-checker and an
-editor review it, and major issues send it back for a rewrite, at most max_revisions times."""
+editor review it. The fact-checker and editor point at the exact words to change and give replacements, which are
+patched in place; only problems that word edits cannot fix send the segment back for a full rewrite. At most
+max_revisions rounds of fixes."""
 from concurrent.futures import ThreadPoolExecutor
 
 from ..episode import ask, cast_text, log, parse_turns, turns_text
 from ..languages import LANGS, chars_per_min, lang_rule
-from .checks import BANNED_OPENERS, segment_issues
+from .checks import BANNED_OPENERS, is_structural, segment_issues
 from .prompts import CONTEXT, EDITOR, FACTCHECK, REVISE, WRITER, fact_lines, numbered
 
 
@@ -38,53 +40,109 @@ def segment_context(ep, i, note=None):
     return ctx, chars
 
 
-def review(ep, i, text):
-    """All critics on one segment's text -> (turns, major issues)."""
+def review(ep, i, turns, bad=()):
+    """Run every critic on one segment. Returns (code, critic, edits): the code checks' findings, the fact-checker's and
+    editor's major findings (as text), and the word edits they gave, each {"line", "find", "replace", "issue"}. The
+    editor is also asked to fix the code checks' word-level findings."""
     plan, segs, r = ep["plan"], ep["plan"]["segments"], ep["request"]
-    turns, bad = parse_turns(text, [s["name"] for s in plan["speakers"]])
-    issues = segment_issues(ep, i, turns, bad)
+    code = segment_issues(ep, i, turns, bad)
     if not turns:
-        return turns, issues
+        return code, [], []
+    lang, script = LANGS[r["lang"]][:2]
+    banned = ", ".join(f'"{b}"' for b in BANNED_OPENERS[:6])
+    words_rule = (f"a stock reaction at the start of a line ({banned}, or the same in {lang})"
+                  + (f"; an English word spelled in {script} script instead of Latin letters" if r["lang"] != "en" else "")
+                  + "; a misspelled or garbled word, or one with letters from another script")
     num = numbered(turns)
     fc = FACTCHECK.format(audience=plan["audience"], facts=fact_lines(ep["facts"]), numbered=num)
     role = ("the opening segment" if i == 0 else "the closing segment, which ends the episode" if i == len(segs) - 1
             else f"main segment {i} of {len(segs) - 2}")
-    ed = EDITOR.format(audience=plan["audience"], role=role, lang=LANGS[r["lang"]][0],
-                       lang_rule=lang_rule(r["lang"], r["code_mix"]), cast=cast_text(plan), goal=segs[i].get("goal", ""), numbered=num,
-                       banned=", ".join(f'"{b}"' for b in BANNED_OPENERS[:6]),
+    ed = EDITOR.format(audience=plan["audience"], role=role, lang=lang, lang_rule=lang_rule(r["lang"], r["code_mix"]),
+                       words_rule=words_rule, cast=cast_text(plan), goal=segs[i].get("goal", ""), numbered=num,
+                       code="\n".join(f"- {x}" for x in code if not is_structural(x)) or "(none)",
                        covered="\n".join(f"- {s['title']}: {s.get('goal', '')} (ended with: "
                                          f"{s['turns'][-1][1] if s.get('turns') else '-'})" for s in segs[:i]) or "(none)")
+    critic, edits = [], []
     with ThreadPoolExecutor(2) as ex:
         jobs = [ex.submit(ask, ep, p, f"{who}:{i + 1}", True, temperature=0.2) for who, p in (("factcheck", fc), ("editor", ed))]
         for who, job in zip(("fact-check", "editor"), jobs):
-            for x in job.result().get("issues") or []:
-                if x.get("severity") != "major":  # minor issues stay in calls.jsonl but do not trigger a rewrite
+            try:
+                found = job.result().get("issues") or []
+            except ValueError:  # not JSON twice (both replies are in calls.jsonl); this round goes on without this critic
+                critic.append(f"({who}) review skipped: its reply could not be read.")
+                continue
+            for x in found:
+                if x.get("severity") != "major":  # minor issues stay in calls.jsonl
                     continue
-                issues.append(f"Line {x.get('line', '?')} ({who}): {x.get('problem', '')} Fix: {x.get('fix', '')}")
-    return turns, issues
+                find, repl = " ".join(str(x.get("find") or "").split()), " ".join(str(x.get("replace") or "").split())
+                critic.append(f"Line {x.get('line', '?')} ({who}): {x.get('problem', '')}"
+                              + (f" Fix: {find!r} -> {repl!r}" if find else ""))
+                if find:
+                    edits.append({"line": x.get("line"), "find": find, "replace": repl, "issue": critic[-1]})
+    return code, critic, edits
+
+
+def needs_rewrite(code, critic):
+    """True if word edits cannot fix the segment: its shape is wrong, or a critic found a problem with no words to
+    change (usually flow)."""
+    return any(is_structural(x) for x in code) or any(x.startswith("Line ") and " Fix: " not in x for x in critic)
+
+
+def apply_edits(turns, edits):
+    """Word fixes: in the edit's line, replace the exact words `find` with `replace`. If the critic miscounted lines,
+    the edit still lands when exactly one line has those words. Returns (new turns, edits that could not be applied).
+    Lines left empty are dropped."""
+    out, failed = [list(t) for t in turns], []
+    for e in edits:
+        try:
+            k = int(e["line"]) - 1
+        except (TypeError, ValueError):
+            k = -1
+        hits = ([k] if 0 <= k < len(out) and e["find"] in out[k][1]
+                else [j for j, t in enumerate(out) if e["find"] in t[1]])
+        if len(hits) == 1:
+            j = hits[0]
+            out[j][1] = " ".join(out[j][1].replace(e["find"], e["replace"], 1).split()).lstrip(",;: ")
+        elif not (e["replace"] and any(e["replace"] in t[1] for t in out)):  # not already fixed by an earlier edit
+            failed.append(e)
+    return [t for t in out if t[1].strip(" ,.;:!?—-")], failed
 
 
 def write_segment(ep, i, max_revisions=2, note=None, from_current=False):
-    """Draft (or, with from_current, start from the current turns), then critics <-> revisions."""
+    """Draft (or, with from_current, start from the current turns), then review rounds. After each review the critics'
+    word edits are patched in; the writer rewrites the whole segment only for problems word edits cannot fix."""
     seg = ep["plan"]["segments"][i]
-    names = ", ".join(s["name"] for s in ep["plan"]["speakers"])
+    names = [s["name"] for s in ep["plan"]["speakers"]]
     ctx, _ = segment_context(ep, i, note)
     if from_current and seg.get("turns"):
         text = turns_text(seg["turns"])
     else:
         log(ep, "writer", f"writing segment {i + 1}: {seg['title']}" + (f" (note: {note})" if note else ""))
-        text = ask(ep, WRITER.format(ctx=ctx, names=names), f"writer:{i + 1}", temperature=0.8)
+        text = ask(ep, WRITER.format(ctx=ctx, names=", ".join(names)), f"writer:{i + 1}", temperature=0.8)
+    turns, bad = parse_turns(text, names)
     for rnd in range(max_revisions + 1):
-        turns, issues = review(ep, i, text)
-        seg["turns"], seg["open_issues"] = [list(t) for t in turns], issues
-        log(ep, "critics", f"segment {i + 1} round {rnd}: {len(issues)} issues", issues=issues)
+        code, critic, edits = review(ep, i, turns, bad)
+        issues = code + critic
+        if needs_rewrite(code, critic) and rnd < max_revisions:
+            log(ep, "critics", f"segment {i + 1} round {rnd}: {len(issues)} issues, rewriting the segment", issues=issues)
+            text = ask(ep, REVISE.format(ctx=ctx, draft=text, issues="\n".join(f"- {x}" for x in issues),
+                                         names=", ".join(names)), f"writer:{i + 1}:rev{rnd + 1}", temperature=0.6)
+            turns, bad = parse_turns(text, names)
+            continue
+        turns, failed = apply_edits(turns, edits)
+        text = turns_text(turns)
+        log(ep, "critics", f"segment {i + 1} round {rnd}: {len(issues)} issues, {len(edits) - len(failed)} word fixes",
+            issues=issues)
+        fixed = {e["issue"] for e in edits} - {e["issue"] for e in failed}
+        seg["turns"] = [list(t) for t in turns]
+        seg["open_issues"] = segment_issues(ep, i, turns, bad) + [x for x in critic if x not in fixed]
         if not issues or rnd == max_revisions:
             break
-        text = ask(ep, REVISE.format(ctx=ctx, draft=text, issues="\n".join(f"- {x}" for x in issues), names=names),
-                   f"writer:{i + 1}:rev{rnd + 1}", temperature=0.6)
 
 
 def review_segment(ep, i):
+    """Review only: record what the critics find, with their suggested word edits; the lines stay as they are."""
     seg = ep["plan"]["segments"][i]
-    _, seg["open_issues"] = review(ep, i, turns_text(seg.get("turns", [])))
+    code, critic, _ = review(ep, i, [tuple(t) for t in seg.get("turns", [])])
+    seg["open_issues"] = code + critic
     log(ep, "critics", f"segment {i + 1} reviewed: {len(seg['open_issues'])} issues", issues=seg["open_issues"])

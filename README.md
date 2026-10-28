@@ -16,7 +16,7 @@ Five agents hand the episode along. Each step can also be run, edited or redone 
 | Producer | `agents/producer.py` | — | cast (name, gender, role), format, segment plan, research questions |
 | Researcher | `agents/researcher.py` | `search` (web via Tavily, Wikipedia), `read`, `done` | what to search and read next, and when to stop |
 | Writer | `agents/writer.py` | — | writes each segment from the facts found; revises after critic feedback; follows user notes |
-| Critics | `agents/writer.py`, `agents/checks.py` | code checks, fact-checker, editor | which issues send a segment back for a rewrite (major ones only, at most 2 rounds) |
+| Critics | `agents/writer.py`, `agents/checks.py` | code checks, fact-checker, editor | which words to change and what to (patched in place); only problems small edits can't fix send a segment back for a full rewrite (major issues only, at most 2 rounds) |
 | Audio | `audio/` | TTS endpoint | one call per line (cached), mixed with pauses, fillers and cut-ins |
 
 All prompts are in `agents/prompts.py`. `pipeline.py` runs the agents in order.
@@ -26,9 +26,12 @@ All prompts are in `agents/prompts.py`. `pipeline.py` runs the agents in order.
 - **Overlapping speech.** The writer adds backchannels (a listener's quick "hmm" or "right" while the other person
   talks) and cut-ins (someone starts before the other finishes). In the audio, a backchannel plays quietly in a pause
   of the other line, which carries on. A cut-in starts before the other line ends, which then stops dead or fades out.
+- **Word-level critics.** The fact-checker and editor point at the exact words to change and give replacements, which
+  are patched into the line, so a fix does not disturb the rest of the segment.
 - **Deterministic checks.** The code checks in `agents/checks.py` cover line format, length against the time budget,
   repeated openers, digits and symbols that TTS reads badly, and script and code-mix balance. For example, they flag
-  Hindi written in Latin letters, or too much English for the chosen mix.
+  Hindi written in Latin letters, too much English for the chosen mix, a word mixing two scripts, an English word glued
+  to an Indian-language ending (it takes a hyphen), or one word starting too many lines.
 
 ## Setup
 

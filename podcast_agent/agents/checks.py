@@ -1,5 +1,6 @@
 """Code-based critic: deterministic checks on generated dialogue (no model calls). Its findings are written as
-instructions to the writer."""
+instructions to the writer. Most name a line and the words to change, and the editor turns them into word edits;
+the STRUCTURAL ones need the whole segment rewritten."""
 import re
 import unicodedata
 from collections import Counter
@@ -13,6 +14,18 @@ BANNED_OPENERS = ("great question", "that's a great", "what a great", "absolutel
                   "fascinating", "that's fascinating", "that's so interesting", "you know what", "let's dive", "wow")
 SYMBOLS = re.compile(r"[*#_\[\]{}<>\\$%&@|~^=+/]")
 MAX_BACKCHANNEL_WORDS = 4
+# One word may start at most this share of an episode's lines. In run langs_20261029, one-word habits ("yes",
+# "meaning") started 14-22% of lines, while ordinary "but" or "so" stayed near 10%.
+FIRST_WORD_SHARE = 0.12
+GLUED = re.compile(r"[A-Za-z][\u0900-\u0DFF]|[\u0900-\u0DFF][A-Za-z]")  # an English word and an Indic ending, no hyphen
+MAX_PER_KIND = 5  # word problems of one kind reported per round; the rest come up in the next round
+# Problems that word edits cannot fix, so the writer rewrites the segment
+STRUCTURAL = ("No dialogue lines", "Not a valid dialogue line", "too long for one turn", "The segment is ",
+              "romanized form", "must come right after")
+
+
+def is_structural(issue):
+    return any(s in issue for s in STRUCTURAL)
 
 
 def words(text):
@@ -54,11 +67,22 @@ def check_segment(turns, bad, lang, code_mix, budget_chars, history):
         if mode != "backchannel" and tx.lower().startswith(BANNED_OPENERS):
             issues.append(f"Line {k}: starts with a stock phrase; start it differently.")
 
+    glued, mixed, wrong = [], [], []
+    for k, (_, tx, _) in enumerate(turns, 1):
+        for tok in tx.split():
+            scripts = {char_script(c) for c in tok if unicodedata.category(c)[0] in "LM"} - {"Latin", "other"}
+            if len(scripts) > 1:
+                mixed.append(f"Line {k}: {tok!r} mixes letters from two scripts; spell it correctly in {script} script.")
+            elif lang != "en" and GLUED.search(tok):
+                glued.append(f"Line {k}: {tok!r} joins an English word and a {name} ending; put a hyphen between them.")
+        for w in words(tx):
+            if (s := word_script(w)) not in (script, "Latin"):
+                wrong.append(f"Line {k}: {w!r} is in {s} script; write it in {script} script or as an English word in "
+                             f"Latin letters.")
+    issues += mixed[:MAX_PER_KIND] + glued[:MAX_PER_KIND] + wrong[:MAX_PER_KIND]
+
     counts = Counter(word_script(w) for _, tx, _ in turns for w in words(tx))
     total = sum(counts.values()) or 1
-    wrong = sum(v for s, v in counts.items() if s not in (script, "Latin"))
-    if wrong / total > 0.02:
-        issues.append(f"{wrong} words are in the wrong script; write {name} in {script} script.")
     if lang != "en":
         lo, hi = LATIN_SHARE[code_mix]
         share = counts["Latin"] / total
@@ -79,13 +103,21 @@ def check_segment(turns, bad, lang, code_mix, budget_chars, history):
 
     opener = lambda tx: " ".join(w.lower() for w in words(tx)[:2])  # noqa: E731
     seen = Counter(opener(tx) for _, tx, mode in history if mode != "backchannel")
+    firsts = Counter(words(tx)[0].lower() for _, tx, mode in history if mode != "backchannel" and words(tx))
+    n, overused = sum(firsts.values()), []
     for k, (_, tx, mode) in enumerate(turns, 1):
-        if mode == "backchannel":  # short reactions repeat naturally
+        if mode == "backchannel" or not words(tx):  # short reactions repeat naturally
             continue
         seen[opener(tx)] += 1
         if seen[opener(tx)] == 4:
             issues.append(f"Line {k}: the opening words {opener(tx)!r} are used too often in this episode; vary them.")
-    return issues
+        first = words(tx)[0].lower()
+        firsts[first] += 1
+        n += 1
+        if firsts[first] > max(3, FIRST_WORD_SHARE * n):
+            overused.append(f"Line {k}: {firsts[first]} of the {n} lines so far start with {first!r}; start this one "
+                            f"differently.")
+    return issues + overused[:MAX_PER_KIND]
 
 
 def segment_issues(ep, i, turns, bad=()):
