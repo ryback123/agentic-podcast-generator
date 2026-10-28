@@ -27,7 +27,8 @@ All prompts are in `agents/prompts.py`. `pipeline.py` runs the agents in order.
   talks) and cut-ins (someone starts before the other finishes). In the audio, a backchannel plays quietly in a pause
   of the other line, which carries on. A cut-in starts before the other line ends, which then stops dead or fades out.
 - **Word-level critics.** The fact-checker and editor point at the exact words to change and give replacements, which
-  are patched into the line, so a fix does not disturb the rest of the segment.
+  are patched into the line, so a fix does not disturb the rest of the segment. When a segment already has more
+  English than its mix allows, fixes that put English in place of native words are dropped.
 - **Deterministic checks.** The code checks in `agents/checks.py` cover line format, length against the time budget,
   repeated openers, digits and symbols that TTS reads badly, and script and code-mix balance. For example, they flag
   Hindi written in Latin letters, too much English for the chosen mix, a word mixing two scripts, an English word glued

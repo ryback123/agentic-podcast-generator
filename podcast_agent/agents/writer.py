@@ -6,7 +6,7 @@ from concurrent.futures import ThreadPoolExecutor
 
 from ..episode import ask, cast_text, log, parse_turns, turns_text
 from ..languages import LANGS, chars_per_min, lang_rule
-from .checks import BANNED_OPENERS, is_structural, segment_issues
+from .checks import BANNED_OPENERS, LATIN_SHARE, adds_english, english_share, is_structural, segment_issues
 from .prompts import CONTEXT, EDITOR, FACTCHECK, REVISE, WRITER, fact_lines, numbered
 
 
@@ -51,7 +51,10 @@ def review(ep, i, turns, bad=()):
     lang, script = LANGS[r["lang"]][:2]
     banned = ", ".join(f'"{b}"' for b in BANNED_OPENERS[:6])
     words_rule = (f"a stock reaction at the start of a line ({banned}, or the same in {lang})"
-                  + (f"; an English word spelled in {script} script instead of Latin letters" if r["lang"] != "en" else "")
+                  + (f"; an English word spelled in {script} script instead of Latin letters (the {script} spelling "
+                     f"of \"body\" is one of these; the {lang} word for body is not, and stays as it is); no fix may put "
+                     f"English in place of {lang} words unless a code check below says there is too little English"
+                     if r["lang"] != "en" else "")
                   + "; a misspelled or garbled word, or one with letters from another script")
     num = numbered(turns)
     fc = FACTCHECK.format(audience=plan["audience"], facts=fact_lines(ep["facts"]), numbered=num)
@@ -62,6 +65,7 @@ def review(ep, i, turns, bad=()):
                        code="\n".join(f"- {x}" for x in code if not is_structural(x)) or "(none)",
                        covered="\n".join(f"- {s['title']}: {s.get('goal', '')} (ended with: "
                                          f"{s['turns'][-1][1] if s.get('turns') else '-'})" for s in segs[:i]) or "(none)")
+    over = r["lang"] != "en" and english_share(turns) > LATIN_SHARE[r["code_mix"]][1]
     critic, edits = [], []
     with ThreadPoolExecutor(2) as ex:
         jobs = [ex.submit(ask, ep, p, f"{who}:{i + 1}", True, temperature=0.2) for who, p in (("factcheck", fc), ("editor", ed))]
@@ -75,6 +79,8 @@ def review(ep, i, turns, bad=()):
                 if x.get("severity") != "major":  # minor issues stay in calls.jsonl
                     continue
                 find, repl = " ".join(str(x.get("find") or "").split()), " ".join(str(x.get("replace") or "").split())
+                if over and adds_english(find, repl):  # the editor often does this even when told the segment is
+                    continue  # already over its English share; dropped like a minor issue (still in calls.jsonl)
                 critic.append(f"Line {x.get('line', '?')} ({who}): {x.get('problem', '')}"
                               + (f" Fix: {find!r} -> {repl!r}" if find else ""))
                 if find:

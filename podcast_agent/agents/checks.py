@@ -28,6 +28,19 @@ def is_structural(issue):
     return any(s in issue for s in STRUCTURAL)
 
 
+def english_share(turns):
+    """Share of words in Latin letters, which the line format keeps for English."""
+    counts = Counter(word_script(w) for _, tx, _ in turns for w in words(tx))
+    return counts["Latin"] / (sum(counts.values()) or 1)
+
+
+def adds_english(find, replace):
+    """True if a fix puts English words in place of words in other scripts (ശരീരത്തിൽ -> body-യിൽ). Respelling an
+    English word written in a native script (ബോഡി -> body) counts too."""
+    f, r = (Counter(word_script(w) for w in words(s)) for s in (find, replace))
+    return r["Latin"] > f["Latin"] and sum(r.values()) - r["Latin"] < sum(f.values()) - f["Latin"]
+
+
 def words(text):
     """Words as letters + combining marks only (Indic vowel signs are marks, not \\w)."""
     out = ("".join(c for c in w if unicodedata.category(c)[0] in "LM") for w in text.split())
@@ -92,11 +105,9 @@ def check_segment(turns, bad, lang, code_mix, budget_chars, history):
                              f"Latin letters.")
     issues += mixed[:MAX_PER_KIND] + joined[:MAX_PER_KIND] + wrong[:MAX_PER_KIND]
 
-    counts = Counter(word_script(w) for _, tx, _ in turns for w in words(tx))
-    total = sum(counts.values()) or 1
     if lang != "en":
         lo, hi = LATIN_SHARE[code_mix]
-        share = counts["Latin"] / total
+        share = english_share(turns)
         if share < lo:
             issues.append(f"Only {share:.0%} of words are English; target code-mixing is {code_mix} "
                           f"({lo:.0%}-{hi:.0%}). Use English words where speakers naturally would.")

@@ -69,6 +69,23 @@ def test_flow_problem_rewrites_and_unreadable_critic_is_recorded(tmp_path, model
     assert any("review skipped" in i for e in ep["log"] for i in e.get("issues", []))  # round 0 went on without it
 
 
+ML = "ASHA: നമ്മുടെ ശരീരത്തിൽ immune system ഉണ്ട്.\nRAVI: അതെ, body-യെ protect ചെയ്യും."
+
+
+@pytest.mark.parametrize("draft, swapped", [(ML, False), (ML.replace("immune system", "പ്രതിരോധശേഷി"), True)])
+def test_no_fix_adds_english_to_a_segment_over_its_share(tmp_path, model, draft, swapped):
+    """The first draft is 44% English (medium allows 35%), the second 25%. Only over the share is the swap dropped."""
+    calls, replies = model
+    swap = {"line": 1, "severity": "major", "problem": "x", "find": "ശരീരത്തിൽ", "replace": "body-യിൽ"}
+    native = {"line": 2, "severity": "major", "problem": "y", "find": "protect ചെയ്യും", "replace": "കാക്കും"}
+    replies.update(writer=[draft], factcheck=[{"issues": []}], editor=[{"issues": [swap, native]}])
+    ep = episode(tmp_path)
+    ep["request"]["lang"] = "ml"
+    writer.write_segment(ep, 0, max_revisions=0)
+    first, second = (t[1] for t in ep["plan"]["segments"][0]["turns"])
+    assert ("body-യിൽ" in first) == swapped and second == "അതെ, body-യെ കാക്കും."
+
+
 def test_chat_json_retries_a_cut_off_reply(monkeypatch):
     from podcast_agent import llm
     replies = [ValueError("editor:1: reply cut off at max_tokens=4000"), '{"issues": []}']
