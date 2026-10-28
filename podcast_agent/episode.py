@@ -16,7 +16,7 @@ episode.json:
   questions       research questions by id, {"Q1": text}
   facts           [{id, q, fact, source, url}] from the researcher
   research_stats  research steps and search credits used
-  stats           script length, speaker shares, open issues (finish)
+  stats           script length, speaker shares, open issues (update_stats)
   audio           voices {speaker: voice}, takes {"SPEAKER|text": n}, episode (the mixed file)
   log             what every agent and the user did, in order
 
@@ -122,12 +122,16 @@ def cast_text(plan):
                      for s in plan["speakers"])
 
 
-# ---------------------------------------------------------------- finished script
-def finish(ep):
-    """Write script.json (for TTS) and script.txt, and refresh stats."""
+# ---------------------------------------------------------------- the finished script
+def _turns(plan):
+    return [{"speaker": sp, "text": tx, **({"mode": mode} if mode else {})}
+            for s in plan["segments"] for sp, tx, mode in s.get("turns", [])]
+
+
+def update_stats(ep):
+    """Refresh the script's stats (length, speaker shares, open issues) after it was written or edited."""
     plan, lang, run = ep["plan"], ep["request"]["lang"], Path(ep["dir"])
-    turns = [{"speaker": sp, "text": tx, **({"mode": mode} if mode else {})}
-             for s in plan["segments"] for sp, tx, mode in s.get("turns", [])]
+    turns = _turns(plan)
     chars = sum(len(t["text"]) for t in turns) or 1
     calls = run / "calls.jsonl"
     ep["stats"] = {"turns": len(turns), "chars": chars, "est_minutes": round(chars / chars_per_min(lang), 1),
@@ -135,13 +139,22 @@ def finish(ep):
                                                       / chars, 2) for s in plan["speakers"]},
                    "facts": len(ep["facts"]), "open_issues": sum(len(s.get("open_issues", [])) for s in plan["segments"]),
                    "llm_calls": sum(1 for _ in open(calls)) if calls.exists() else 0}
-    sources = sorted({(f["source"], f["url"]) for f in ep["facts"]})
-    (run / "script.json").write_text(json.dumps({
-        "title": plan["title"], "language": lang, "speakers": plan["speakers"], "turns": turns,
-        "sources": [{"title": t, "url": u} for t, u in sources]}, ensure_ascii=False, indent=1))
+    log(ep, "done", f"script ready: {ep['stats']['turns']} lines, ~{ep['stats']['est_minutes']} min, "
+                    f"{ep['stats']['open_issues']} open issues")
+
+
+def script_text(ep):
+    """The script to read or print: title, cast, then each segment's lines."""
+    plan = ep["plan"]
     lines = [plan["title"], cast_text(plan), ""]
     for k, s in enumerate(plan["segments"], 1):
         lines += [f"## {k}. {s['title']}"] + [f"{label(sp, mode)}: {tx}" for sp, tx, mode in s.get("turns", [])] + [""]
-    (run / "script.txt").write_text("\n".join(lines))
-    log(ep, "done", f"script ready: {ep['stats']['turns']} lines, ~{ep['stats']['est_minutes']} min, "
-                    f"{ep['stats']['open_issues']} open issues")
+    return "\n".join(lines)
+
+
+def script_json(ep):
+    """The script for other programs: cast, lines (with their mode when they overlap) and the facts' sources."""
+    plan = ep["plan"]
+    sources = sorted({(f["source"], f["url"]) for f in ep["facts"]})
+    return {"title": plan["title"], "language": ep["request"]["lang"], "speakers": plan["speakers"],
+            "turns": _turns(plan), "sources": [{"title": t, "url": u} for t, u in sources]}

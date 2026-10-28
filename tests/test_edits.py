@@ -1,10 +1,10 @@
 """Edits from the web app: renaming speakers and editing lines (edits.py, no model calls)."""
 import copy
-import json
 
 import pytest
 
 from podcast_agent import edits
+from podcast_agent.episode import script_json, script_text
 
 
 def spk(name, gender):
@@ -34,9 +34,10 @@ def test_rename_reaches_lines_goals_voices_and_files(tmp_path):
     assert ep["audio"]["voices"] == {"ISHAAN": "v1", "MEERA": "v2"}
     assert ep["audio"]["takes"] == {"ISHAAN|मैं हूँ Ishaan, और ये Meera हैं।": 2}
     assert set(ep["stats"]["speaker_share"]) == {"ISHAAN", "MEERA"}
-    out = json.loads((tmp_path / "script.json").read_text())["turns"]
+    out = script_json(ep)["turns"]
     assert out[0] == {"speaker": "ISHAAN", "text": "मैं हूँ Ishaan, और ये Meera हैं।"} and out[1]["mode"] == "cut", out
-    assert "MEERA (cuts in): " in (tmp_path / "script.txt").read_text()
+    assert "MEERA (cuts in): " in script_text(ep)
+    assert not list(tmp_path.glob("script.*"))  # built when downloaded, not saved
 
     before = copy.deepcopy(ep["plan"]["segments"])
     edits.set_plan(ep, copy.deepcopy(ep["plan"]))  # saving without renaming changes no line

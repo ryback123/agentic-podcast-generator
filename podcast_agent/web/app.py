@@ -7,14 +7,14 @@ import json
 from pathlib import Path
 
 from fastapi import Body, FastAPI, HTTPException
-from fastapi.responses import FileResponse
+from fastapi.responses import FileResponse, PlainTextResponse
 from fastapi.staticfiles import StaticFiles
 
 from .. import edits, llm, pipeline
 from ..agents import producer, researcher, writer
 from ..audio import tts
 from ..config import RUNS, TTS_VOICES
-from ..episode import finish, load, new_episode
+from ..episode import load, new_episode, script_json, script_text, update_stats
 from ..languages import CODE_MIX, LANGS
 from .jobs import editable, episode_dir, jobs, start
 
@@ -63,6 +63,23 @@ def get_episode(eid: str):
     ep["lines"] = [{**ln, "ready": bool(ln["file"]) and (run / ln["file"]).exists()} for ln in tts.lines(ep)]
     ep.pop("dir")
     return ep
+
+
+def with_script(eid):
+    ep = load(episode_dir(eid))
+    if not any(s.get("turns") for s in (ep.get("plan") or {}).get("segments", [])):
+        raise HTTPException(404, "no script yet")
+    return ep
+
+
+@app.get("/api/episodes/{eid}/script.txt", response_class=PlainTextResponse)
+def get_script_txt(eid: str):
+    return script_text(with_script(eid))
+
+
+@app.get("/api/episodes/{eid}/script.json")
+def get_script_json(eid: str):
+    return script_json(with_script(eid))
 
 
 @app.get("/api/episodes/{eid}/files/{path:path}")
@@ -125,11 +142,11 @@ def segment_action(eid: str, i: int, action: str, body: dict = Body(default={}))
     segment_index(load(episode_dir(eid)), i)
     note = (body.get("note") or "").strip() or None
     if action == "rewrite":
-        fn = lambda ep: (writer.write_segment(ep, i, note=note), finish(ep))  # noqa: E731
+        fn = lambda ep: (writer.write_segment(ep, i, note=note), update_stats(ep))  # noqa: E731
     elif action == "fix":
-        fn = lambda ep: (writer.write_segment(ep, i, note=note, from_current=True), finish(ep))  # noqa: E731
+        fn = lambda ep: (writer.write_segment(ep, i, note=note, from_current=True), update_stats(ep))  # noqa: E731
     elif action == "review":
-        fn = lambda ep: (writer.review_segment(ep, i), finish(ep))  # noqa: E731
+        fn = lambda ep: (writer.review_segment(ep, i), update_stats(ep))  # noqa: E731
     else:
         raise HTTPException(404, "unknown action")
     return start(eid, f"{action} segment {i + 1}", fn)

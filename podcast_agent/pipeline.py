@@ -2,18 +2,18 @@
 from .agents.producer import produce
 from .agents.researcher import research
 from .agents.writer import write_segment
-from .episode import finish
+from .episode import update_stats
 
 
 def write_all(ep, max_revisions=2, only_missing=False):
     for i, seg in enumerate(ep["plan"]["segments"]):
         if not (only_missing and seg.get("turns")):
             write_segment(ep, i, max_revisions)
-    finish(ep)
+    update_stats(ep)
 
 
 def run_all(ep, max_research_steps=20, max_revisions=2):
-    """Everything still missing: plan -> research -> unwritten segments -> script files."""
+    """Everything still missing: plan -> research -> unwritten segments."""
     if not ep["plan"]:
         produce(ep)
     if not ep["facts"]:

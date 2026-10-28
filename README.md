@@ -84,11 +84,13 @@ Each episode gets its own folder, `$PODCAST_RUNS/<timestamp>_<lang>_<topic>_<id>
 
 | File | Contents |
 |---|---|
-| `episode.json` | the plan, facts, script, agent log and audio state |
-| `script.txt`, `script.json` | the final script; overlapping lines carry a `mode` (`backchannel`, `cut`, `fade`) |
+| `episode.json` | everything about the episode: plan, facts, script, agent log, audio settings (see `episode.py`) |
 | `calls.jsonl` | every LLM prompt and response |
-| `audio/` | line clips |
-| `episode.mp3` | the stitched episode |
+| `audio/` | one clip per line |
+| `episode.mp3`, `episode.wav` | the mixed episode |
+
+The Script tab downloads the script as `script.txt` (to read) or `script.json` (for other programs; overlapping lines
+carry a `mode`: `backchannel`, `cut` or `fade`). The command line prints the script when it finishes.
 
 ## Code layout
 

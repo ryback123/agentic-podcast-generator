@@ -3,7 +3,7 @@ import re
 
 from .agents.checks import segment_issues
 from .agents.producer import assign_questions, check_plan
-from .episode import TAGS, finish, log
+from .episode import TAGS, log, update_stats
 
 
 def set_plan(ep, plan):
@@ -32,7 +32,7 @@ def set_plan(ep, plan):
     ep["plan"] = plan
     log(ep, "user", "edited the plan" + (f", renamed {', '.join(f'{o} to {n}' for o, n in rename.items())}" if rename else ""))
     if written:
-        finish(ep)  # script files and speaker shares use the new names
+        update_stats(ep)  # speaker shares use the new names
 
 
 def renamer(rename):
@@ -59,4 +59,4 @@ def set_turns(ep, i, turns):
     seg = ep["plan"]["segments"][i]
     seg["turns"], seg["open_issues"] = clean, segment_issues(ep, i, clean)
     log(ep, "user", f"edited segment {i + 1}: {len(clean)} lines")
-    finish(ep)
+    update_stats(ep)

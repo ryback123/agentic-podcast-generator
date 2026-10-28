@@ -236,8 +236,8 @@ const VIEWS = {
         <button class="btn" data-act="writeAll">Rewrite the whole script</button>
         ${segs.some((s) => !s.turns?.length) ? '<button class="btn" data-act="writeMissing">Write missing segments</button>' : ""}
         <span class="grow"></span>
-        ${hasScript() ? `<a class="btn btn-quiet" href="${file("script.txt")}" target="_blank">script.txt</a>
-          <a class="btn btn-quiet" href="${file("script.json")}" target="_blank">script.json</a>` : ""}
+        ${hasScript() ? `<a class="btn btn-quiet" href="/api/episodes/${EP.id}/script.txt" target="_blank">script.txt</a>
+          <a class="btn btn-quiet" href="/api/episodes/${EP.id}/script.json" target="_blank">script.json</a>` : ""}
       </div>
       ${segs.map(sheet).join("")}`;
   },

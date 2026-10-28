@@ -6,7 +6,7 @@ import argparse
 from pathlib import Path
 
 from .config import RUNS
-from .episode import new_episode
+from .episode import new_episode, script_text
 from .languages import CODE_MIX, LANGS
 from .pipeline import run_all
 
@@ -27,6 +27,7 @@ def main():
     ep = new_episode(a.topic, a.description, a.lang, a.speakers, a.minutes, a.code_mix, a.seed, a.out)
     print(f"run dir: {ep['dir']}", flush=True)
     run_all(ep, a.max_research_steps, a.max_revisions)
+    print("\n" + script_text(ep))
 
 
 if __name__ == "__main__":
