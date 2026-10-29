@@ -1,4 +1,4 @@
-/* Colours from Indian dyes: indigo ink, turmeric for meters and marks, rani pink only for "on air" and the main
+/* Colours from Indian dyes: indigo ink, turmeric for meters and marks, rani pink only for work in progress and the main
    button. One type family, Anek, for English and every Indian script, so mixed lines read as one voice. */
 :root {
   --board: #F6F5FA;      /* page background, a pale indigo */
@@ -8,7 +8,7 @@
   --line: #DAD8E6;
   --console: #221B5C;    /* side rail */
   --console-ink: #E4E2F2;
-  --onair: #C8195F;      /* rani pink: on air, errors */
+  --onair: #C8195F;      /* rani pink: work in progress, errors */
   --lamp: #E83B80;       /* the lamp itself */
   --go: #C8195F;         /* the main button, white text on it in both themes */
   --amber: #F4B71E;      /* turmeric: meters, issues */

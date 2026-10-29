@@ -168,7 +168,7 @@ async function renderList() {
   const list = await api("GET", "/api/episodes").catch(() => []);
   $("#episodes").innerHTML = list.length
     ? list.map((e) => {
-        const state = e.running ? '<span class="live">on air</span>' : e.has_audio ? "audio ready" : e.has_script ? "script ready" : "planned";
+        const state = e.running ? '<span class="live">in progress</span>' : e.has_audio ? "audio ready" : e.has_script ? "script ready" : "planned";
         return `<a class="ep-link" href="#/ep/${e.id}/${tabOf(e)}" ${e.id === EP?.id ? 'aria-current="page"' : ""}>
           <span class="t" lang="${e.lang}">${esc(e.title)}</span><span class="s">${NATIVE[e.lang] || e.lang}, ${state}</span></a>`;
       }).join("")
@@ -177,9 +177,9 @@ async function renderList() {
   if (!covers) return;
   covers.innerHTML = list.map(cover).join("") || '<p class="hint">Your episodes will appear here.</p>';
   pill.innerHTML = live.length ? `<a class="onair" href="#/ep/${live[0].id}/${tabOf(live[0])}"><i class="dot on"></i>
-    ${live.length} ${live.length > 1 ? "episodes" : "episode"} on air</a>` : "";
+    ${live.length} ${live.length > 1 ? "episodes" : "episode"} in progress</a>` : "";
   syncShimmer();
-  if (live.length) listTimer = setTimeout(renderList, 3000); // keep the on-air states current
+  if (live.length) listTimer = setTimeout(renderList, 3000); // keep the in-progress states current
 }
 
 // ---------------------------------------------------------------- home: new episode and your episodes
@@ -238,7 +238,7 @@ function lanes(n, seed) {
 }
 function cover(e) {
   const h = hash(e.id), [bg, fg] = COVERS[h % COVERS.length];
-  const state = e.running ? `<span class="state live"><i class="dot on"></i>On air: ${esc(e.task || "working")}</span>`
+  const state = e.running ? `<span class="state live"><i class="dot on"></i>${esc(cap(e.task || "working"))}…</span>`
     : `<span class="state">${e.has_audio ? "Audio ready" : e.has_script ? "Script ready" : "No script yet"}${
         e.has_script && e.minutes ? `, about ${e.minutes} minutes` : ""}</span>`;
   return `<a class="cover-link" href="#/ep/${e.id}/${tabOf(e)}"><span class="cover" style="--bg:${bg};--fg:${fg}">
@@ -287,7 +287,7 @@ function render() {
   const title = p?.title || r.topic;
   const lamp = job.running ? `<div class="lamp on" role="status"><i></i>${esc(cap(job.task))}…</div>`
     : job.error ? `<div class="lamp err" role="status"><i></i>Stopped: ${esc(job.error.slice(0, 90))}</div>`
-    : `<div class="lamp" role="status"><i></i>Off air</div>`;
+    : "";
   paint(`
     <div class="head"><div>
       <h1 class="${/[^\x00-\x7F]/.test(title) ? "native" : ""}" lang="${r.lang}">${esc(title)}</h1>
