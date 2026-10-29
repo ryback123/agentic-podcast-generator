@@ -1,5 +1,5 @@
 """The code-based critic (agents/checks.py)."""
-from podcast_agent.agents.checks import check_segment, word_script, words
+from podcast_agent.agents.checks import adds_english, check_segment, word_script, words
 
 HI = "अर्जुन, ये UPI payments असल में काम कैसे करते हैं?"
 
@@ -77,3 +77,11 @@ def test_which_problems_need_a_rewrite():
     assert is_structural("Line 3: a (cuts in) line must come right after a line by another speaker in this segment.")
     assert not is_structural("Line 3: contains digits; write numbers as spoken words.")
     assert not is_structural("Line 2: 'bodyಗೆ' joins an English word and a Kannada ending; put a hyphen between them.")
+
+
+def test_adds_english():
+    assert adds_english("ശരീരത്തിൽ", "body-യിൽ", "Malayalam")  # a Malayalam word swapped for English
+    assert adds_english("ബോഡി", "body", "Malayalam")  # a respelling looks the same to the code
+    assert not adds_english("protect ചെയ്യും", "കാക്കും", "Malayalam")
+    assert not adds_english("वायरस-ಗೆ", "virus-ಗೆ", "Kannada")  # wrong-script words may become English
+    assert not adds_english("진짜", "real", "Kannada")

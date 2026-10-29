@@ -79,7 +79,7 @@ def review(ep, i, turns, bad=()):
                 if x.get("severity") != "major":  # minor issues stay in calls.jsonl
                     continue
                 find, repl = " ".join(str(x.get("find") or "").split()), " ".join(str(x.get("replace") or "").split())
-                if over and adds_english(find, repl):  # the editor often does this even when told the segment is
+                if over and adds_english(find, repl, script):  # the editor often does this even when told the segment is
                     continue  # already over its English share; dropped like a minor issue (still in calls.jsonl)
                 critic.append(f"Line {x.get('line', '?')} ({who}): {x.get('problem', '')}"
                               + (f" Fix: {find!r} -> {repl!r}" if find else ""))

@@ -34,11 +34,12 @@ def english_share(turns):
     return counts["Latin"] / (sum(counts.values()) or 1)
 
 
-def adds_english(find, replace):
-    """True if a fix puts English words in place of words in other scripts (ശരീരത്തിൽ -> body-യിൽ). Respelling an
-    English word written in a native script (ബോഡി -> body) counts too."""
+def adds_english(find, replace, script):
+    """True if a fix puts English words in place of words in the episode's script (ശരീരത്തിൽ -> body-യിൽ). Respelling
+    an English word written in that script (ബോഡി -> body) counts too; fixing a word in a wrong script (Hindi वायरस in
+    Kannada -> virus) does not."""
     f, r = (Counter(word_script(w) for w in words(s)) for s in (find, replace))
-    return r["Latin"] > f["Latin"] and sum(r.values()) - r["Latin"] < sum(f.values()) - f["Latin"]
+    return r["Latin"] > f["Latin"] and r[script] < f[script]
 
 
 def words(text):
