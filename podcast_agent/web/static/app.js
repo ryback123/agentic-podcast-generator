@@ -108,9 +108,10 @@ function homeSkeleton() { // shaped like renderHome
       <div class="row">${["Speakers", "Length"].map((l) => `<div class="f"><span>${l}</span>${sk("150px", "btn")}</div>`).join("")}
         <div class="f"><span>English mixing</span>${sk("215px", "btn")}</div></div></section>
     <div class="bar">${sk("220px", "btn")}${sk("200px", "btn")}</div></div>
-    <p class="vh" role="status">Loading</p>`));
+    <p class="vh" role="status">Loading</p>`, LOCKUP));
 }
-const page = (title, body) => `<div class="page"><div class="pagehead"><h1>${title}</h1><span class="hint" id="count"></span></div>${body}</div>`;
+const page = (title, body, aside = "") => `<div class="page"><div class="pagehead"><h1>${title}</h1><span class="hint" id="count"></span>${aside}</div>${body}</div>`;
+const LOCKUP = '<p class="lockup"><img src="logo.svg" alt="Podcast Studio" width="36" height="36"><span aria-hidden="true">Podcast Studio</span></p>'; // the logo, on the New tab's title row
 const pageSkeleton = (v) => (v === "episodes"
   ? `<div class="filters" aria-hidden="true">${sk("320px", "btn")}${sk("190px", "btn")}${sk("470px", "btn")}</div><div class="covers">${coverSkeleton()}</div>`
   : times(2, (i) => `<section class="panel" aria-hidden="true">${sk(28)}${para(3, i)}</section>`)) + '<p class="vh" role="status">Loading</p>';
@@ -235,7 +236,7 @@ function renderHome() { // laid out like Settings: a title, then panels, then th
     </div>
     <p class="hint">Making the whole episode runs planning, research and writing in one go, which takes about five to eight minutes.
       Planning first lets you change the cast and outline before research starts.</p>
-  </form>`));
+  </form>`, LOCKUP));
 }
 
 // ---------------------------------------------------------------- Episodes tab

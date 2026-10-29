@@ -44,9 +44,10 @@ a { color: inherit; }
 :focus-visible { outline: 2px solid var(--onair); outline-offset: 2px; }
 button, input, select, textarea { font: inherit; color: inherit; }
 
-/* ---------- brand, and the bottom tab bar, like an app's */
-.brand { display: flex; align-items: center; gap: 10px; font-size: 21px; font-weight: 800; font-stretch: 125%;
-         text-decoration: none; letter-spacing: -.01em; padding: 0 6px; }
+/* ---------- the logo on the New tab, and the bottom tab bar, like an app's */
+.lockup { display: flex; align-items: center; gap: 10px; margin: 0 0 0 auto; align-self: center; font-size: 19px; font-weight: 800;
+          font-stretch: 125%; letter-spacing: -.01em; }
+.lockup img { border-radius: 8px; }
 .dot { width: 10px; height: 10px; border-radius: 50%; background: var(--lamp); display: inline-block; flex-shrink: 0; }
 :root { --navh: 68px; }
 body { padding-bottom: calc(var(--navh) + env(safe-area-inset-bottom)); }
@@ -329,6 +330,7 @@ details.trace summary { cursor: pointer; font-weight: 600; }
   .cover { padding: 12px 14px; }
   .cover .top span + span { display: none; } /* the speaker count; the cover's bars show one row per speaker */
   .cover .t { font-size: 17px; -webkit-line-clamp: 3; }
+  .lockup span { display: none; } /* on a phone, just the icon on the title row */
   .head { flex-direction: column; }
   h1 { font-size: 30px; }
   .ln { grid-template-columns: 1fr auto; }

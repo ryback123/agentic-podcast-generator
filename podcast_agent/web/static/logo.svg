@@ -1,0 +1,9 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64">
+  <title>Podcast Studio</title>
+  <!-- a mic between two voices, one wave in each speaker colour -->
+  <rect width="64" height="64" rx="14" fill="#221B5C"/>
+  <rect x="25" y="8" width="14" height="27" rx="7" fill="#FFFFFF"/>
+  <path d="M22.8 12.3A13 13 0 0 0 22.8 30.7M18.6 8.1A19 19 0 0 0 18.6 34.9" fill="none" stroke="#4FD1D9" stroke-width="3.6" stroke-linecap="round"/>
+  <path d="M41.2 12.3A13 13 0 0 1 41.2 30.7M45.4 8.1A19 19 0 0 1 45.4 34.9" fill="none" stroke="#F4B71E" stroke-width="3.6" stroke-linecap="round"/>
+  <path d="M32 35.5V52M23 52.5h18" fill="none" stroke="#FFFFFF" stroke-width="4" stroke-linecap="round"/>
+</svg>
