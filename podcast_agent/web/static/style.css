@@ -391,10 +391,10 @@ details.trace summary { cursor: pointer; font-weight: 600; }
 /* ---------- page transitions (see swap() in app.js) */
 ::view-transition-group(page) { animation: none; }
 ::view-transition-old(page), ::view-transition-new(page) { mix-blend-mode: normal; }
-:root[data-nav="forward"]::view-transition-old(page) { animation: page-out-left .34s cubic-bezier(.3, 0, .2, 1) both; }
-:root[data-nav="forward"]::view-transition-new(page) { animation: page-in-right .34s cubic-bezier(.3, 0, .2, 1) both; }
-:root[data-nav="back"]::view-transition-old(page) { animation: page-out-right .34s cubic-bezier(.3, 0, .2, 1) both; }
-:root[data-nav="back"]::view-transition-new(page) { animation: page-in-left .34s cubic-bezier(.3, 0, .2, 1) both; }
+:root[data-nav="forward"]::view-transition-old(page) { animation: page-out-left .2s cubic-bezier(.2, 0, 0, 1) both; }
+:root[data-nav="forward"]::view-transition-new(page) { animation: page-in-right .2s cubic-bezier(.2, 0, 0, 1) both; }
+:root[data-nav="back"]::view-transition-old(page) { animation: page-out-right .2s cubic-bezier(.2, 0, 0, 1) both; }
+:root[data-nav="back"]::view-transition-new(page) { animation: page-in-left .2s cubic-bezier(.2, 0, 0, 1) both; }
 @keyframes page-out-left { to { transform: translateX(-100vw); } }
 @keyframes page-in-right { from { transform: translateX(100vw); } }
 @keyframes page-out-right { to { transform: translateX(100vw); } }
