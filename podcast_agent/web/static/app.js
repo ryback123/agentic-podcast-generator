@@ -12,6 +12,7 @@ const AGENT = { producer: "Producer", researcher: "Researcher", writer: "Writer"
 const STEPS = [["plan", "Plan"], ["research", "Research"], ["script", "Script"], ["audio", "Audio"]];
 const PLAY = '<svg viewBox="0 0 12 12" aria-hidden="true"><path d="M2 1l9 5-9 5z"/></svg>';
 const CHECK = '<svg viewBox="0 0 16 16" aria-hidden="true"><path d="M3 8.5l3.2 3L13 4.5"/></svg>';
+const PENCIL = '<svg viewBox="0 0 16 16" aria-hidden="true"><path d="M10.5 2.5l3 3L6 13H3v-3z"/></svg>';
 
 let CFG = null, EP = null, TAB = "plan", timer = null, listTimer = null, wasRunning = false;
 const dirty = new Set(); // segment indexes with unsaved script edits
@@ -88,8 +89,8 @@ const audioSkeleton = () => playerSkeleton() + `<section aria-hidden="true"><h2>
 
 function episodeSkeleton(tab) {
   const body = { plan: () => planSkeleton(), research: researchSkeleton, script: scriptSkeleton, audio: audioSkeleton }[tab];
-  paint(`<div class="head" aria-hidden="true"><div style="flex:1">${sk(55, "h1")}
-      <div class="meta">${["70px", "84px", "110px", "150px"].map((w) => sk(w, "chip")).join("")}</div></div></div>
+  paint(`<div class="head" aria-hidden="true"><div class="title"><i class="sk thumb-sk"></i><div style="flex:1">${sk(55, "h1")}
+      <div class="meta">${["70px", "84px", "110px", "150px"].map((w) => sk(w, "chip")).join("")}</div></div></div></div>
     <nav class="steps" aria-hidden="true">${STEPS.map(([k, l], i) =>
       `<a ${k === tab ? 'aria-current="page"' : ""}><span class="l"><b>${i + 1}</b>${l}</span><small>&nbsp;</small></a>`).join("")}</nav>
     <div class="work"><div class="stage">${body()}</div>
@@ -236,15 +237,17 @@ function lanes(n, seed) {
     return `<span>${out}</span>`;
   });
 }
-function cover(e) {
-  const h = hash(e.id), [bg, fg] = COVERS[h % COVERS.length];
+const coverColours = (id) => { const [bg, fg] = COVERS[hash(id) % COVERS.length]; return `--bg:${bg};--fg:${fg}`; };
+const coverImg = (id, name) => `<img src="/api/episodes/${id}/files/${name}" alt="">`;
+function cover(e) { // an uploaded image fills the cover and the title goes under it; otherwise colour, bars and title
   const state = e.running ? `<span class="state live"><i class="dot on"></i>${esc(cap(e.task || "working"))}…</span>`
     : `<span class="state">${e.has_audio ? "Audio ready" : e.has_script ? "Script ready" : "No script yet"}${
         e.has_script && e.minutes ? `, about ${e.minutes} minutes` : ""}</span>`;
-  return `<a class="cover-link" href="#/ep/${e.id}/${tabOf(e)}"><span class="cover" style="--bg:${bg};--fg:${fg}">
-      <span class="top"><span lang="${e.lang}">${NATIVE[e.lang] || e.lang}</span><span>${e.speakers} speakers</span></span>
-      <span class="lanes" aria-hidden="true">${lanes(e.speakers || 2, h)}</span>
-      <span class="t" lang="${e.lang}">${esc(e.title)}</span></span>${state}</a>`;
+  const top = `<span class="top"><span lang="${e.lang}">${NATIVE[e.lang] || e.lang}</span><span>${e.speakers} speakers</span></span>`;
+  const t = `<span class="t" lang="${e.lang}">${esc(e.title)}</span>`;
+  const art = e.cover ? `<span class="cover pic">${coverImg(e.id, e.cover)}${top}</span>${t}`
+    : `<span class="cover" style="${coverColours(e.id)}">${top}<span class="lanes" aria-hidden="true">${lanes(e.speakers || 2, hash(e.id))}</span>${t}</span>`;
+  return `<a class="cover-link" href="#/ep/${e.id}/${tabOf(e)}">${art}${state}</a>`;
 }
 function updateNewForm(form) {
   $("#mixbox").hidden = form.lang.value === "en";
@@ -289,11 +292,16 @@ function render() {
     : job.error ? `<div class="lamp err" role="status"><i></i>Stopped: ${esc(job.error.slice(0, 90))}</div>`
     : "";
   paint(`
-    <div class="head"><div>
+    <div class="head"><div class="title">
+      <button class="thumb" type="button" data-act="pickCover" style="${coverColours(EP.id)}"
+        aria-label="${EP.cover ? "Change" : "Add"} cover image" title="${EP.cover ? "Change" : "Add"} cover image">
+        ${EP.cover ? coverImg(EP.id, EP.cover) : ""}<span class="edit" aria-hidden="true">${PENCIL}</span></button>
+      <div>
       <h1 class="${/[^\x00-\x7F]/.test(title) ? "native" : ""}" lang="${r.lang}">${esc(title)}</h1>
       <div class="meta"><span>${NATIVE[r.lang]}</span><span>${r.speakers} speakers</span><span>${r.minutes} minute target</span>
-        ${r.lang !== "en" ? `<span>${cap(r.code_mix)} English mixing</span>` : ""}<span>Topic: ${esc(r.topic)}</span></div>
-    </div>${lamp}</div>
+        ${r.lang !== "en" ? `<span>${cap(r.code_mix)} English mixing</span>` : ""}<span>Topic: ${esc(r.topic)}</span>
+        ${EP.cover ? '<button class="linkish" type="button" data-act="dropCover">Remove cover</button>' : ""}</div>
+    </div></div>${lamp}</div>
     <nav class="steps" aria-label="Steps">${STEPS.map(([k, l], i) => {
       const st = stepState(k), mark = st === "live" ? '<i class="dot on"></i>' : st === "done" ? CHECK : `<b>${i + 1}</b>`;
       return `<a class="${st}" href="#/ep/${EP.id}/${k}" ${k === TAB ? 'aria-current="page"' : ""}>
@@ -507,6 +515,8 @@ async function act(method, path, body, msg) {
 }
 
 const ACTIONS = {
+  pickCover: () => $("#coverfile").click(), // the input lives outside #main, so a re-render can't drop the pick
+  dropCover: () => act("DELETE", "/cover", undefined, "Cover removed"),
   step: (b) => { // the − and + beside speakers and length; the number input keeps it within min and max
     const input = b.form[b.dataset.name];
     if (b.dataset.d > 0) input.stepUp(); else input.stepDown();
@@ -628,6 +638,26 @@ document.addEventListener("submit", (e) => {
   if (e.target.id !== "newform") return;
   e.preventDefault();
   submitNew(e.target, e.submitter?.value);
+});
+// a picked cover is cropped to a centred square of at most 1000 px and re-encoded here, which keeps covers small
+// and drops the photo's metadata, then uploaded
+$("#coverfile").addEventListener("change", async (e) => {
+  const file = e.target.files[0], id = EP?.id;
+  e.target.value = "";
+  if (!file || !id) return;
+  let img;
+  try { img = await createImageBitmap(file); } catch { return toast("Could not read that image. Try a JPEG or PNG.", true); }
+  const side = Math.min(img.width, img.height), out = Math.min(side, 1000), c = document.createElement("canvas");
+  c.width = c.height = out;
+  c.getContext("2d").drawImage(img, (img.width - side) / 2, (img.height - side) / 2, side, side, 0, 0, out, out);
+  const blob = await new Promise((done) => c.toBlob(done, "image/jpeg", 0.88));
+  try {
+    const r = await fetch(`/api/episodes/${id}/cover`, { method: "PUT", headers: { "Content-Type": "image/jpeg" }, body: blob });
+    if (!r.ok) throw new Error((await r.json().catch(() => ({}))).detail || `${r.status} ${r.statusText}`);
+    toast("Cover updated");
+    if (EP?.id === id) load(id);
+    renderList();
+  } catch (err) { toast(err.message, true); }
 });
 window.addEventListener("hashchange", route);
 window.addEventListener("beforeunload", (e) => { if (dirty.size) e.preventDefault(); });

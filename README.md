@@ -61,7 +61,8 @@ python -m uvicorn podcast_agent.web.app:app --host 127.0.0.1 --port 8842
 ```
 
 Open http://127.0.0.1:8842. The home page has the new-episode form and your episodes, with the ones being made marked
-in progress. An episode walks through Plan → Research → Script → Audio:
+in progress. Click the square beside an episode's title to give it a cover image (cropped to a square in the browser;
+saved as `cover.jpg` in the episode folder). An episode walks through Plan → Research → Script → Audio:
 
 - **Plan:** edit the cast and outline. Speaker names are made up by the producer; rename anyone at any time, and the
   script lines and voice choices follow. Each speaker has a persona, a few sentences on who they are and how they

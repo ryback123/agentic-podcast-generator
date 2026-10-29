@@ -6,7 +6,7 @@ episode; the UI polls GET /api/episodes/{id}, which reads the episode.json the j
 import json
 from pathlib import Path
 
-from fastapi import Body, FastAPI, HTTPException
+from fastapi import Body, FastAPI, HTTPException, Request
 from fastapi.responses import FileResponse, PlainTextResponse
 from fastapi.staticfiles import StaticFiles
 
@@ -52,7 +52,7 @@ def list_episodes():
                     "topic": ep["request"]["topic"], "lang": ep["request"]["lang"], "created": ep.get("created"),
                     "speakers": len(plan.get("speakers") or []) or ep["request"].get("speakers"),
                     "minutes": (ep.get("stats") or {}).get("est_minutes"),
-                    "running": job.get("running", False), "task": job.get("task"),
+                    "running": job.get("running", False), "task": job.get("task"), "cover": cover_name(f.parent),
                     "has_script": any(s.get("turns") for s in plan.get("segments", [])),
                     "has_audio": bool((ep.get("audio") or {}).get("episode"))})
     return out
@@ -64,6 +64,7 @@ def get_episode(eid: str):
     run = Path(ep["dir"])
     ep["job"] = jobs.get(eid, {"task": None, "running": False, "error": None})
     ep["lines"] = [{**ln, "ready": bool(ln["file"]) and (run / ln["file"]).exists()} for ln in tts.lines(ep)]
+    ep["cover"] = cover_name(run)
     ep.pop("dir")
     return ep
 
@@ -83,6 +84,52 @@ def get_script_txt(eid: str):
 @app.get("/api/episodes/{eid}/script.json")
 def get_script_json(eid: str):
     return script_json(with_script(eid))
+
+
+# ---------------------------------------------------------------- cover image
+# A file next to episode.json rather than a field in it, so a running job saving the episode can't drop it.
+COVER_MAX = 2 * 1024 * 1024  # the page uploads a square of at most 1000 px, well under this
+
+
+def image_type(data):
+    """File extension for a PNG, JPEG or WebP image, judged by its first bytes; None for anything else."""
+    if data.startswith(b"\x89PNG\r\n\x1a\n"):
+        return "png"
+    if data.startswith(b"\xff\xd8\xff"):
+        return "jpg"
+    if data[:4] == b"RIFF" and data[8:12] == b"WEBP":
+        return "webp"
+    return None
+
+
+def cover_name(run):
+    """The uploaded cover's file name, with a version so browsers fetch a replaced one; None if there is none."""
+    f = next(iter(sorted(run.glob("cover.*"))), None)
+    return f"{f.name}?v={f.stat().st_mtime_ns}" if f else None
+
+
+@app.put("/api/episodes/{eid}/cover")
+async def set_cover(eid: str, request: Request):
+    run = episode_dir(eid)
+    data = b""
+    async for chunk in request.stream():
+        data += chunk
+        if len(data) > COVER_MAX:
+            raise HTTPException(413, "the image is over 2 MB")
+    ext = image_type(data)
+    if not ext:
+        raise HTTPException(400, "use a PNG, JPEG or WebP image")
+    for f in run.glob("cover.*"):
+        f.unlink()
+    (run / f"cover.{ext}").write_bytes(data)
+    return {"cover": cover_name(run)}
+
+
+@app.delete("/api/episodes/{eid}/cover")
+def drop_cover(eid: str):
+    for f in episode_dir(eid).glob("cover.*"):
+        f.unlink()
+    return {"cover": None}
 
 
 @app.get("/api/episodes/{eid}/files/{path:path}")
