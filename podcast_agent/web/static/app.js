@@ -266,7 +266,7 @@ async function submitNew(form, mode) {
 function stepNote(k) {
   if (k === "plan") return EP.plan ? `${EP.plan.segments.length} segments` : "";
   if (k === "research") return EP.facts.length ? `${EP.facts.length} facts` : "";
-  if (k === "script") return writes() ? "being written" : hasScript() && EP.stats ? `~${EP.stats.est_minutes} min` : "";
+  if (k === "script") return liveStep() === "script" ? "being written" : hasScript() && EP.stats ? `~${EP.stats.est_minutes} min` : "";
   if (k === "audio") return EP.audio?.episode ? `${(EP.audio.episode.seconds / 60).toFixed(1)} min` : "";
 }
 
