@@ -152,6 +152,15 @@ def segment_action(eid: str, i: int, action: str, body: dict = Body(default={}))
     return start(eid, f"{action} segment {i + 1}", fn)
 
 
+@app.post("/api/episodes/{eid}/sample")
+def sample(eid: str, speaker: dict = Body(...)):
+    """Three lines in a speaker's persona, from the cast card as typed (nothing is saved)."""
+    ep = load(episode_dir(eid))
+    if not ep.get("plan"):
+        raise HTTPException(409, "plan the episode first")
+    return {"lines": writer.sample_lines(ep, speaker)}
+
+
 @app.put("/api/episodes/{eid}/segments/{i}")
 def save_segment(eid: str, i: int, body: dict = Body(...)):
     ep = editable(eid)

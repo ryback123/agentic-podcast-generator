@@ -24,7 +24,7 @@ def test_apply_edits():
 def episode(tmp_path):
     spk = lambda n: {"name": n, "gender": "female", "role": "host", "knowledge": "-", "style": "-"}  # noqa: E731
     return {"id": "t", "dir": str(tmp_path), "log": [], "facts": [], "questions": {},
-            "request": {"lang": "en", "code_mix": "medium"},
+            "request": {"lang": "en", "code_mix": "medium", "topic": "Vaccines"},
             "plan": {"title": "Vaccines", "audience": "adults", "format": "chat", "hook": "h",
                      "speakers": [spk("ASHA"), spk("RAVI")],
                      "segments": [{"title": "One", "goal": "explain", "minutes": len(DRAFT) / 900}]}}
@@ -85,6 +85,14 @@ def test_no_fix_adds_english_to_a_segment_over_its_share(tmp_path, model, draft,
     first, second = (t[1] for t in ep["plan"]["segments"][0]["turns"])
     assert ("body-യിൽ" in first) == swapped and second == "അതെ, body-യെ കാക്കും."
 
+
+
+def test_sample_lines_are_cleaned(tmp_path, model):
+    calls, replies = model
+    replies.update(sample=['1. "It is a fake wanted poster."\n\n- RAVI: Wait, so the body practises?\n* Fine. Prove it.\nOne too many.'])
+    lines = writer.sample_lines(episode(tmp_path), {"name": "Ravi", "gender": "male", "role": "skeptic", "style": "blunt"})
+    assert lines == ["It is a fake wanted poster.", "Wait, so the body practises?", "Fine. Prove it."]
+    assert calls == ["sample:Ravi"]
 
 def test_chat_json_retries_a_cut_off_reply(monkeypatch):
     from podcast_agent import llm

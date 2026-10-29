@@ -13,7 +13,7 @@ Five agents hand the episode along. Each step can also be run, edited or redone 
 
 | Agent | Code | Tools | Decides |
 |---|---|---|---|
-| Producer | `agents/producer.py` | — | cast (name, gender, role), format, segment plan, research questions |
+| Producer | `agents/producer.py` | — | cast (name, gender, role, persona), format, segment plan, research questions |
 | Researcher | `agents/researcher.py` | `search` (web via Tavily, Wikipedia), `read`, `done` | what to search and read next, and when to stop |
 | Writer | `agents/writer.py` | — | writes each segment from the facts found; revises after critic feedback; follows user notes |
 | Critics | `agents/writer.py`, `agents/checks.py` | code checks, fact-checker, editor | which words to change and what to (patched in place); only problems small edits can't fix send a segment back for a full rewrite (major issues only, at most 2 rounds) |
@@ -63,7 +63,8 @@ python -m uvicorn podcast_agent.web.app:app --host 127.0.0.1 --port 8842
 Open http://127.0.0.1:8842. The UI walks through Plan → Research → Script → Audio:
 
 - **Plan:** edit the cast and outline. Speaker names are made up by the producer; rename anyone at any time, and the
-  script lines and voice choices follow.
+  script lines and voice choices follow. Each speaker has a persona, a few sentences on who they are and how they
+  speak, which the writer follows; "Try this persona" writes three sample lines from it before any script exists.
 - **Research:** run research again.
 - **Script:** edit any line and choose how it starts (own turn, filler while the other keeps talking, cuts in with a
   hard stop, cuts in with a fade), review or fix a segment, or rewrite a segment with a note.

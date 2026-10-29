@@ -10,7 +10,8 @@ episode.json:
   request         what was asked for: topic, description, lang, speakers, minutes, code_mix, seed
   provenance      code commit and model used
   plan            by the producer, editable by the user: title, audience, format, hook,
-                  speakers [{name, gender, role, knowledge, style}],
+                  speakers [{name, gender, role, knowledge, style}] (style is the persona: who they are and
+                  how they speak, a few sentences),
                   segments [{title, goal, minutes, questions, qids, turns, open_issues}]
   plans_made      how many plans were made (varies the producer's random choices)
   questions       research questions by id, {"Q1": text}
@@ -118,7 +119,7 @@ def turns_text(turns):
 
 
 def cast_text(plan):
-    return "\n".join(f"- {s['name']} ({s.get('gender', '?')}, {s['role']}): knows {s['knowledge']}; talks {s['style']}"
+    return "\n".join(f"- {s['name']} ({s.get('gender', '?')}, {s['role']}). Knows: {s['knowledge']}\n  Persona: {s['style']}"
                      for s in plan["speakers"])
 
 

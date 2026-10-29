@@ -25,7 +25,7 @@ Number of speakers: exactly {n}
 Target length: {minutes} minutes
 
 Plan:
-- Cast: exactly {n} speakers. For each: a first name common among {lang} speakers, written in Latin letters only (it is the speaker label); gender (female or male; mix genders); a role (for example host, co-host, expert, guest, skeptic); what they know about the topic; how they talk (tone and rhythm only; do not give catchphrases or example words, they get overused). Give the cast useful contrast: someone who explains and someone who asks what the listener would ask{extra_role}. Match the audience level in the requester's notes; with no level given, aim at curious adults with no background.
+- Cast: exactly {n} speakers. For each: a first name common among {lang} speakers, written in Latin letters only (it is the speaker label); gender (female or male; mix genders); a role (for example host, co-host, expert, guest, skeptic); what they know about the topic; a persona: two to four sentences on who they are and how they speak (attitude, energy, sentence length, humour, how they explain, ask or push back), describing habits rather than catchphrases or example words, which get overused. Give the cast useful contrast: someone who explains and someone who asks what the listener would ask{extra_role}. Match the audience level in the requester's notes; with no level given, aim at curious adults with no background.
 - Format for this episode: {fmt}. Opening hook: {hook}.
 - Exactly {k} segments whose minutes add up to {minutes}: an opening (hook, then the speakers introduce themselves; about 1 minute), {main} main segments, and a closing (recap and one memorable takeaway; about 1 minute). Each main segment has one clear goal and builds on the one before.
 - For each main segment, one to three research questions whose answers (facts, numbers, real examples, stories) would make the segment concrete and correct. The opening and closing have no questions.
@@ -35,6 +35,16 @@ Reply with only this JSON:
 {{"title": str, "audience": str, "format": str,
  "speakers": [{{"name": str, "gender": "female" | "male", "role": str, "knowledge": str, "style": str}}],
  "segments": [{{"title": str, "goal": str, "minutes": number, "questions": [str]}}]}}"""
+
+
+# Three lines in one speaker's persona, so a persona can be tried before any script is written
+SAMPLE = """You are writing for one speaker of the podcast episode "{title}" (topic: {topic}; audience: {audience}).
+Speaker: {name} ({gender}, {role}). Knows: {knowledge}
+Persona: {persona}
+Language: {lang}. {lang_rule}
+
+Write three short lines this speaker might say in the episode: one explaining something, one reacting to what someone else just said, and one asking a question or pushing back. Let the persona show in word choice, sentence length and attitude; do not repeat a signature phrase. Write numbers as words.
+Reply with only the three lines, one per line, without the speaker's name."""
 
 
 # ---------------------------------------------------------------- researcher
@@ -96,6 +106,7 @@ Rules:
 - No markdown, stage directions, sound effects, or emojis.
 - Short turns: one to three sentences, sometimes just a quick reaction. Vary turn lengths.
 - Speakers react to what was just said, ask follow-up questions, sometimes interrupt or disagree, and use concrete examples and analogies that suit the audience.
+- Each speaker talks like their persona in the cast: it shows in word choice, sentence length, attitude and how they react. Show it, never announce it, and do not repeat any phrase as a signature.
 - The facts come from sources written for experts. Explain each technical term in everyday words when it first comes up, or leave it out; keep only the few terms the listener needs.
 - Do not start turns with stock reactions ({banned}, or the same words in {lang}) and do not reuse the same reaction within the episode. Vary how turns begin: no single word (like yes, so, but, or meaning) should start more than one turn in ten.
 - Speakers never say their own name, except when introducing themselves in the opening.
@@ -142,7 +153,7 @@ EDITOR = """You are the story editor of a podcast for {audience}. This is {role}
 1. Level: too advanced or too childish for the audience, or a technical term left unexplained.
 2. Speech: lines that sound written rather than spoken, lecture-like monologues, or unnatural language. Target language: {lang}. {lang_rule}
 3. Words: {words_rule}.
-4. Characters: a speaker acting outside their role or knowledge. Cast:
+4. Characters: a speaker acting outside their role or knowledge, or sounding unlike their persona. Cast:
 {cast}
 5. Flow: the segment misses its goal ("{goal}"), repeats earlier segments (including ending the same way they did), or does not follow from the previous segment.
 Fixed rules the script must keep (never suggest breaking them): numbers and symbols written as words; short turns; lines tagged (backchannel), (cuts in) or (talks over) are deliberate overlaps, and a line cut off mid-sentence before a cut-in is deliberate.

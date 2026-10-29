@@ -2,12 +2,13 @@
 editor review it. The fact-checker and editor point at the exact words to change and give replacements, which are
 patched in place; only problems that word edits cannot fix send the segment back for a full rewrite. At most
 max_revisions rounds of fixes."""
+import re
 from concurrent.futures import ThreadPoolExecutor
 
 from ..episode import ask, cast_text, log, parse_turns, turns_text
 from ..languages import LANGS, chars_per_min, lang_rule
 from .checks import BANNED_OPENERS, LATIN_SHARE, adds_english, english_share, is_structural, segment_issues
-from .prompts import CONTEXT, EDITOR, FACTCHECK, REVISE, WRITER, fact_lines, numbered
+from .prompts import CONTEXT, EDITOR, FACTCHECK, REVISE, SAMPLE, WRITER, fact_lines, numbered
 
 
 def segment_context(ep, i, note=None):
@@ -152,3 +153,22 @@ def review_segment(ep, i):
     code, critic, _ = review(ep, i, [tuple(t) for t in seg.get("turns", [])])
     seg["open_issues"] = code + critic
     log(ep, "critics", f"segment {i + 1} reviewed: {len(seg['open_issues'])} issues", issues=seg["open_issues"])
+
+
+def sample_lines(ep, speaker):
+    """Three lines a speaker might say, written from their persona (as typed, not necessarily saved)."""
+    r, plan = ep["request"], ep["plan"]
+    name = str(speaker.get("name") or "").strip()
+    text = ask(ep, SAMPLE.format(title=plan["title"], topic=r["topic"], audience=plan["audience"], name=name,
+                                 gender=speaker.get("gender", ""), role=speaker.get("role", ""),
+                                 knowledge=speaker.get("knowledge", ""), persona=speaker.get("style", ""),
+                                 lang=LANGS[r["lang"]][0], lang_rule=lang_rule(r["lang"], r["code_mix"])),
+               f"sample:{name}", temperature=0.8)
+    lines = []
+    for x in text.splitlines():  # drop numbering, bullets, a "NAME:" label and wrapping quotes
+        x = re.sub(r"^\s*(?:[-*•]|\d+[.)])\s*", "", x)
+        x = re.sub(rf"^{re.escape(name)}\s*:\s*", "", x, flags=re.I) if name else x
+        if x := x.strip().strip('"“”').strip():
+            lines.append(x)
+    return lines[:3]
+

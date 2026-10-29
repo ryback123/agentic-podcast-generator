@@ -146,6 +146,11 @@ output { font-weight: 650; color: var(--ink); }
 .strips { display: grid; grid-template-columns: repeat(auto-fill, minmax(230px, 1fr)); gap: 12px; }
 .strip { background: var(--sheet); border-radius: 8px; border-top: 5px solid var(--c); padding: 12px; display: flex;
          flex-direction: column; gap: 8px; }
+.strip > .btn { align-self: flex-start; }
+.sample:empty { display: none; }
+.sample-lines { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 6px;
+                font: 14px/1.5 var(--text); color: var(--ink); }
+.sample-lines li { border-left: 3px solid var(--c); padding-left: 9px; }
 .strip .nm { font-weight: 720; font-stretch: 80%; font-size: 18px; color: var(--c); border-color: transparent; padding-left: 0; }
 .outline { counter-reset: s; display: flex; flex-direction: column; gap: 10px; margin: 0; padding: 0; list-style: none; }
 .outline li { background: var(--sheet); border-radius: 8px; padding: 12px 14px; display: grid;

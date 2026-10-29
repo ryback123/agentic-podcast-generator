@@ -14,6 +14,7 @@ const PLAY = '<svg viewBox="0 0 12 12" aria-hidden="true"><path d="M2 1l9 5-9 5z
 
 let CFG = null, EP = null, TAB = "plan", timer = null, wasRunning = false;
 const dirty = new Set(); // segment indexes with unsaved script edits
+let samples = {}; // speaker index -> sample lines written from their persona
 const player = new Audio();
 
 // ---------------------------------------------------------------- utils
@@ -42,9 +43,10 @@ const empty = (msg) => `<div class="empty"><p>${esc(msg)}</p></div>`;
 function autosize(t) { t.style.height = "auto"; t.style.height = t.scrollHeight + 2 + "px"; }
 function paint(html) {
   $("#main").innerHTML = html;
-  // every placeholder runs on the page clock, so the shimmer stays in step when the page re-renders during a job
-  for (const a of document.getAnimations()) if (a.animationName === "sk") a.startTime = 0;
+  syncShimmer();
 }
+// every placeholder runs on the page clock, so the shimmer stays in step when the page re-renders during a job
+function syncShimmer() { for (const a of document.getAnimations()) if (a.animationName === "sk") a.startTime = 0; }
 
 // ---------------------------------------------------------------- loading placeholders
 // Shaped like the content they stand for, using the same layout classes. Widths come from a fixed list, so a
@@ -125,7 +127,7 @@ async function route() {
   if (dirty.size && EP) await saveDirty();
   if (view === "ep" && id) {
     TAB = STEPS.some(([k]) => k === tab) ? tab : "plan";
-    if (!EP || EP.id !== id) { dirty.clear(); wasRunning = false; episodeSkeleton(TAB); }
+    if (!EP || EP.id !== id) { dirty.clear(); samples = {}; wasRunning = false; episodeSkeleton(TAB); }
     await load(id);
   } else {
     EP = null;
@@ -233,6 +235,7 @@ function render() {
       `<a href="#/ep/${EP.id}/${k}" ${k === TAB ? 'aria-current="page"' : ""}><b>${i + 1}</b>${l}<small>${stepNote(k)}</small></a>`).join("")}</nav>
     <div class="work"><fieldset class="stage" ${job.running ? "disabled" : ""}>${VIEWS[TAB]()}</fieldset>${cue()}</div>`);
   $$("textarea.auto").forEach(autosize);
+  document.fonts.ready.then(() => $$("textarea.auto").forEach(autosize)); // sized again once the web fonts are in
   const c = $(".cue");
   c.scrollTop = c.scrollHeight;
 }
@@ -258,7 +261,10 @@ const VIEWS = {
           `<option ${s.gender === g ? "selected" : ""}>${g}</option>`).join("")}</select></label>
         <label class="f"><span>Role</span><input type="text" name="role" value="${esc(s.role)}"></label>
         <label class="f"><span>Knows</span><textarea class="auto" name="knowledge" rows="2">${esc(s.knowledge)}</textarea></label>
-        <label class="f"><span>Talks</span><textarea class="auto" name="style" rows="2">${esc(s.style)}</textarea></label>
+        <label class="f"><span>Persona</span><textarea class="auto" name="style" rows="4"
+          placeholder="Who they are and how they speak: attitude, energy, sentence length, humour, how they explain or push back">${esc(s.style)}</textarea></label>
+        <div class="sample">${sampleLines(i)}</div>
+        <button class="btn btn-quiet" type="button" data-act="sample" data-i="${i}">Try this persona</button>
       </div>`).join("")}</div></section>
     <section><h2>Outline</h2><ol class="outline">${p.segments.map((s, i) => `
       <li data-seg="${i}">
@@ -346,6 +352,9 @@ const VIEWS = {
   },
 };
 
+const sampleLines = (i, lines = samples[i]) => lines ? `<ul class="sample-lines" lang="${EP.request.lang}">${lines.map((x) =>
+  `<li>${esc(x)}</li>`).join("")}</ul>` : "";
+
 function statsBar() {
   const st = EP.stats, sp = EP.plan.speakers;
   return `<div class="stats">
@@ -432,6 +441,19 @@ async function act(method, path, body, msg) {
 }
 
 const ACTIONS = {
+  sample: async (b) => { // three lines from the persona as typed; nothing is saved
+    const i = +b.dataset.i, strip = b.closest(".strip"), box = $(".sample", strip);
+    const speaker = Object.fromEntries(["name", "gender", "role", "knowledge", "style"].map((n) => [n, $(`[name=${n}]`, strip).value.trim()]));
+    b.disabled = true;
+    box.innerHTML = `<ul class="sample-lines" aria-hidden="true">${times(3, (k) => `<li>${para(1 + ((i + k) % 2), i + k)}</li>`)}</ul>
+      <p class="vh" role="status">Writing sample lines</p>`;
+    syncShimmer();
+    try {
+      samples[i] = (await api("POST", `/api/episodes/${EP.id}/sample`, speaker)).lines;
+    } catch (e) { toast(e.message, true); }
+    box.innerHTML = sampleLines(i);
+    b.disabled = false;
+  },
   replan: () => (!EP.plan || confirm("Plan again from scratch? This replaces the plan, the research and the script.")) && act("POST", "/plan"),
   savePlan: () => act("PUT", "/plan", collectPlan(), "Plan saved"),
   research: async () => {
