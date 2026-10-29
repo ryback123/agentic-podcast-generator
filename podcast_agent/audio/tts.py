@@ -1,10 +1,12 @@
 """Audio step: one TTS call per script line, then the clips are mixed (mix.py) into episode.wav and episode.mp3.
 
-TTS endpoint: OpenAI-compatible POST {TTS_BASE_URL}/audio/speech {model, voice, input, response_format}.
-Settings: TTS_BASE_URL, TTS_MODEL, TTS_API_KEY, TTS_VOICES (config.py).
+TTS endpoint: OpenAI-compatible POST {TTS_BASE_URL}/audio/speech {model, voice, input, response_format, instructions},
+where instructions is a JSON string {"lang": <episode language>}: Bodhan's indic-speak reads the language from there,
+and servers without the field ignore it. Settings: TTS_BASE_URL, TTS_MODEL, TTS_API_KEY, TTS_VOICES (config.py).
 Line audio is cached by (voice, text, take), so only changed lines are synthesized again.
 """
 import hashlib
+import json
 import os
 import subprocess
 import time
@@ -15,11 +17,12 @@ from pathlib import Path
 import numpy as np
 from openai import OpenAI
 
-from ..config import TTS_API_KEY, TTS_BASE_URL, TTS_MODEL as MODEL
+from ..config import TTS_API_KEY, TTS_BASE_URL, TTS_MODEL as MODEL, TTS_VOICE_INFO
 from ..episode import log
 from .mix import RATE, load_clip, mix
 
-_client = OpenAI(base_url=TTS_BASE_URL, api_key=TTS_API_KEY, timeout=600) if TTS_BASE_URL else None
+# retries back off on rate limits (Bodhan allowed 4 requests a minute per key in 2026-09) and server errors
+_client = OpenAI(base_url=TTS_BASE_URL, api_key=TTS_API_KEY, timeout=600, max_retries=6) if TTS_BASE_URL else None
 
 
 def configured():
@@ -40,19 +43,41 @@ def lines(ep):
     return out
 
 
-def _tts(text, voice, path):
-    r = _client.audio.speech.create(model=MODEL, voice=voice, input=text, response_format="wav")
+def _tts(text, voice, path, lang):
+    r = _client.audio.speech.create(model=MODEL, voice=voice, input=text, response_format="wav",
+                                    instructions=json.dumps({"lang": lang}))
     tmp = path.with_suffix(".part")
     tmp.write_bytes(r.content)
     os.replace(tmp, path)  # a crash never leaves a half-written clip that looks finished
 
 
-# what a voice says on the Voices tab: English and Hindi, as an everyday mixed line
-SAMPLE = "Hi, I could be one of your speakers. आज हम बात करेंगे कि vaccines हमारी body को कैसे train करती हैं।"
+# what a voice says on the Voices tab: "Hi, I am <name>!" in the voice's own language (English where there is none)
+GREETINGS = {
+    "en": "Hi, I am {name}!",
+    "hi": "नमस्ते, मैं {name} हूँ!",
+    "bn": "নমস্কার, আমি {name}!",
+    "mr": "नमस्कार, मी {name} आहे!",
+    "te": "నమస్కారం, నేను {name}!",
+    "ta": "வணக்கம், நான் {name}!",
+    "gu": "નમસ્તે, હું {name} છું!",
+    "kn": "ನಮಸ್ಕಾರ, ನಾನು {name}!",
+    "ml": "നമസ്കാരം, ഞാൻ {name}!",
+    "or": "ନମସ୍କାର, ମୁଁ {name}!",
+    "pa": "ਸਤ ਸ੍ਰੀ ਅਕਾਲ, ਮੈਂ {name} ਹਾਂ!",
+    "as": "নমস্কাৰ, মই {name}!",
+}
+
+
+def sample_line(voice):
+    """(text, lang) a voice says on the Voices tab."""
+    lang = (TTS_VOICE_INFO.get(voice) or {}).get("lang", "")
+    lang = lang if lang in GREETINGS else "en"
+    return GREETINGS[lang].format(name=voice), lang
 
 
 def sample(voice, path):
-    _tts(SAMPLE, voice, path)
+    text, lang = sample_line(voice)
+    _tts(text, voice, path, lang)
 
 
 def synthesize(ep, voices=None, workers=4):
@@ -69,8 +94,9 @@ def synthesize(ep, voices=None, workers=4):
         raise ValueError(f"pick a voice for {missing}")
     todo = [ln for ln in all_lines if not (run / ln["file"]).exists()]
     log(ep, "audio", f"synthesizing {len(todo)} of {len(all_lines)} lines")
+    lang = ep["request"]["lang"]
     with ThreadPoolExecutor(workers) as ex:
-        list(ex.map(lambda ln: _tts(ln["text"], ln["voice"], run / ln["file"]), todo))
+        list(ex.map(lambda ln: _tts(ln["text"], ln["voice"], run / ln["file"], lang), todo))
     stitch(ep)
 
 

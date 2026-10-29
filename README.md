@@ -49,7 +49,7 @@ set -a; . ./.env; set +a
 | `LLM_BASE_URL`, `LLM_MODEL`, `LLM_API_KEY` | everything | any OpenAI-compatible chat endpoint; built with Gemma 4 31B |
 | `TAVILY_API_KEY` | web search | optional; without it research uses Wikipedia only. A basic search costs 1 credit |
 | `CONTACT_EMAIL` | Wikipedia | sent in the User-Agent, as Wikimedia's policy asks; anonymous clients get throttled |
-| `TTS_BASE_URL`, `TTS_MODEL`, `TTS_API_KEY`, `TTS_VOICES` | audio | OpenAI-style `POST /audio/speech`; `TTS_VOICES` is a comma-separated list |
+| `TTS_BASE_URL`, `TTS_MODEL`, `TTS_API_KEY`, `TTS_VOICES` | audio | OpenAI-style `POST /audio/speech`, such as Bodhan's `indic-speak` (`.env.example` has its settings); every request sends `instructions` = `{"lang": <episode language>}`. `TTS_VOICES` is a comma-separated list of `name:gender:lang` |
 | `PODCAST_RUNS` | — | where episodes are saved (default `~/podcast_runs`) |
 
 To serve a model yourself, for example: `vllm serve google/gemma-4-31B-it --served-model-name gemma-4-31b`.

@@ -382,6 +382,8 @@ details.trace summary { cursor: pointer; font-weight: 600; }
              gap: 10px; }
 .voicelist li { background: var(--sheet); border-radius: 8px; padding: 10px 12px; display: flex; flex-wrap: wrap; align-items: center;
                 gap: 6px 10px; }
+.voicegroup h2 { font-size: 20px; margin: 22px 0 10px; }
+.voicegroup h2 small { font-size: 14px; font-weight: 600; color: var(--muted); }
 .tag { font-size: 13px; padding: 1px 8px; border-radius: 4px; background: var(--board); color: var(--muted); }
 @media (max-width: 760px) {
   .status { grid-template-columns: 1fr; gap: 2px; }

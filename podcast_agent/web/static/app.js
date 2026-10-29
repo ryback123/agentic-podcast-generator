@@ -305,36 +305,58 @@ function renderEpisodes() {
 }
 
 // ---------------------------------------------------------------- Voices tab
+const langName = (c) => CFG.languages.find((l) => l.code === c)?.name || c;
 function renderVoices() {
-  const V = CFG.tts.voices;
+  const V = CFG.tts.voices, info = CFG.tts.voice_info || {};
   if (!CFG.tts.configured || !V.length) {
     return paint(page("Voices", `<div class="empty"><p>Audio isn't connected yet. Once the server has a text-to-speech service
       (TTS_BASE_URL and TTS_VOICES), its voices appear here: play a sample of each and pick the default voice for female and
       male speakers.</p></div>`));
   }
-  const opts = (sel) => `<option value="">The first free voice</option>${V.map((v) => `<option ${v === sel ? "selected" : ""}>${esc(v)}</option>`).join("")}`;
-  paint(page("Voices", `<p class="hint lede">Play a sample to hear each voice. New speakers get the default for their gender, unless another
-      speaker already has it; you can still change any speaker's voice in an episode's Audio step.</p>
+  const opts = (sel, g) => `<option value="">The first free ${g} voice</option>${V.filter((v) => !info[v]?.gender || info[v].gender === g)
+    .map((v) => `<option ${v === sel ? "selected" : ""}>${esc(v)}</option>`).join("")}`;
+  const order = CFG.languages.map((l) => l.code), groups = {}; // voices by their language, in the app's language order
+  for (const v of V) (groups[order.includes(info[v]?.lang) ? info[v].lang : ""] ??= []).push(v);
+  const keys = [...order.filter((c) => groups[c]), ...(groups[""] ? [""] : [])];
+  const item = (v) => `<li><button class="play" type="button" data-act="play"
+      data-src="/api/voices/${encodeURIComponent(v)}/sample.wav" aria-label="Play a sample of ${esc(v)}">${PLAY}</button>
+    <b>${esc(v)}</b>${info[v]?.gender ? `<span class="hint">${esc(info[v].gender)}</span>` : ""}${
+      v === SETTINGS.voice_female ? '<span class="tag">female default</span>' : ""}${
+      v === SETTINGS.voice_male ? '<span class="tag">male default</span>' : ""}</li>`;
+  paint(page("Voices", `<p class="hint lede">Play a sample to hear each voice in its own language. A speaker starts on a voice of
+      their gender in the episode's language; the defaults below are for languages without voices of their own, such as
+      English, and for episodes with more speakers than their language has voices. You can change any speaker's voice in an
+      episode's Audio step.</p>
     <form class="panel" id="voiceform"><div class="row">
-      <label class="f"><span>Default for female speakers</span><select name="voice_female">${opts(SETTINGS.voice_female)}</select></label>
-      <label class="f"><span>Default for male speakers</span><select name="voice_male">${opts(SETTINGS.voice_male)}</select></label>
+      <label class="f"><span>Default for female speakers</span><select name="voice_female">${opts(SETTINGS.voice_female, "female")}</select></label>
+      <label class="f"><span>Default for male speakers</span><select name="voice_male">${opts(SETTINGS.voice_male, "male")}</select></label>
       </div><div class="bar"><button class="btn btn-primary" type="submit">Save default voices</button></div></form>
-    <ul class="voicelist">${V.map((v) => `<li><button class="play" type="button" data-act="play"
-        data-src="/api/voices/${encodeURIComponent(v)}/sample.wav" aria-label="Play a sample of ${esc(v)}">${PLAY}</button>
-      <b>${esc(v)}</b>${v === SETTINGS.voice_female ? '<span class="tag">female default</span>' : ""}${
-        v === SETTINGS.voice_male ? '<span class="tag">male default</span>' : ""}</li>`).join("")}</ul>`));
+    ${keys.map((c) => `<section class="voicegroup"><h2>${c ? `<span lang="${c}">${NATIVE[c] || c}</span> <small>${esc(langName(c))}</small>`
+      : "Other voices"}</h2><ul class="voicelist">${groups[c].map(item).join("")}</ul></section>`).join("")}`));
 }
-// the Audio step's starting voices: saved choices, then the gender's default if no one has it yet, then the first free one
-function pickVoices(speakers, saved) {
-  const V = CFG.tts.voices, used = new Set(), out = {};
-  for (const s of speakers) if (V.includes(saved[s.name])) { out[s.name] = saved[s.name]; used.add(saved[s.name]); }
+// the Audio step's starting voices: a saved choice; else a free voice of the speaker's gender in the episode's language;
+// else the gender's default from the Voices tab; else any free voice of that gender; else any free voice
+function pickVoices(speakers, saved, lang) {
+  const V = CFG.tts.voices, info = CFG.tts.voice_info || {}, used = new Set(), out = {};
+  const free = (v) => V.includes(v) && !used.has(v);
+  const take = (s, v) => { out[s.name] = v; used.add(v); };
+  for (const s of speakers) if (V.includes(saved[s.name])) take(s, saved[s.name]);
   for (const s of speakers) {
     if (out[s.name]) continue;
+    const mine = (v) => free(v) && info[v]?.gender === s.gender;
     const d = { female: SETTINGS.voice_female, male: SETTINGS.voice_male }[s.gender];
-    out[s.name] = V.includes(d) && !used.has(d) ? d : V.find((v) => !used.has(v)) || V[0];
-    used.add(out[s.name]);
+    take(s, V.find((v) => mine(v) && info[v].lang === lang) || (free(d) ? d : "") || V.find(mine) || V.find(free) || V[0]);
   }
   return out;
+}
+// a speaker's voice menu: the episode language's voices first
+function voiceOptions(sel, lang) {
+  const V = CFG.tts.voices, info = CFG.tts.voice_info || {};
+  const opt = (v) => `<option value="${esc(v)}" ${v === sel ? "selected" : ""}>${esc(v)}${info[v]?.gender ? `, ${info[v].gender}` : ""}${
+    info[v]?.lang && info[v].lang !== lang ? `, ${esc(langName(info[v].lang))}` : ""}</option>`;
+  const own = V.filter((v) => info[v]?.lang === lang), rest = V.filter((v) => info[v]?.lang !== lang);
+  return own.length ? `<optgroup label="${esc(langName(lang))} voices">${own.map(opt).join("")}</optgroup>
+    <optgroup label="Other voices">${rest.map(opt).join("")}</optgroup>` : V.map(opt).join("");
 }
 
 // ---------------------------------------------------------------- Settings tab
@@ -587,7 +609,7 @@ const VIEWS = {
     if (!CFG.tts.configured) {
       return empty("Audio needs a text-to-speech service. Start the server with TTS_BASE_URL and TTS_VOICES set, then reload this page.");
     }
-    const picked = pickVoices(EP.plan.speakers, EP.audio?.voices || {}), V = CFG.tts.voices, ep = EP.audio?.episode;
+    const picked = pickVoices(EP.plan.speakers, EP.audio?.voices || {}, EP.request.lang), ep = EP.audio?.episode;
     const ready = EP.lines.filter((l) => l.ready).length, busy = EP.job.running && EP.job.task === "generating audio";
     return `${busy && !ep ? playerSkeleton() : ""}${ep ? `<div class="player"><h2>Episode</h2>
         <audio controls preload="none" src="${file(ep.file)}?v=${ep.built}"></audio>
@@ -596,7 +618,7 @@ const VIEWS = {
           <a class="btn btn-quiet" href="${file("episode.wav")}" download>WAV</a></div></div>` : ""}
       <section><h2>Voices</h2><div class="voices">${EP.plan.speakers.map((s, i) => `
         <label class="f" style="--c:${color(i)}"><b>${esc(s.name)}</b><span>${esc(s.gender)}, ${esc(s.role)}</span>
-          <select data-voice="${esc(s.name)}">${V.map((v) => `<option ${picked[s.name] === v ? "selected" : ""}>${esc(v)}</option>`).join("")}</select></label>`).join("")}
+          <select data-voice="${esc(s.name)}">${voiceOptions(picked[s.name], EP.request.lang)}</select></label>`).join("")}
         </div>
         <div class="bar" style="margin-top:12px"><button class="btn btn-primary" data-act="genAudio">${ready ? "Update audio" : "Generate audio"}</button>
           <span class="hint">${ready} of ${EP.lines.length} lines have audio${ready && ready < EP.lines.length ? "; only new or changed lines are generated" : ""}.</span></div></section>

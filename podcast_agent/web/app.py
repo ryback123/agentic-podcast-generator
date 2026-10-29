@@ -16,7 +16,7 @@ from fastapi.staticfiles import StaticFiles
 from .. import edits, llm, pipeline
 from ..agents import producer, researcher, writer
 from ..audio import tts
-from ..config import RUNS, TAVILY_API_KEY, TTS_VOICES
+from ..config import RUNS, TAVILY_API_KEY, TTS_VOICE_INFO, TTS_VOICES
 from ..episode import load, new_episode, script_json, script_text, update_stats
 from ..languages import CODE_MIX, LANGS
 from . import settings
@@ -37,7 +37,7 @@ def segment_index(ep, i):
 def config():
     return {"languages": [{"code": c, "name": n, "script": s} for c, (n, s, _) in LANGS.items()],
             "code_mix": list(CODE_MIX), "model": llm.MODEL,
-            "tts": {"configured": tts.configured(), "voices": TTS_VOICES, "model": tts.MODEL}}
+            "tts": {"configured": tts.configured(), "voices": TTS_VOICES, "voice_info": TTS_VOICE_INFO, "model": tts.MODEL}}
 
 
 @app.get("/api/episodes")
@@ -157,7 +157,7 @@ def voice_sample(voice: str):
     """A short line in this voice, made on first play and kept in RUNS/.voices."""
     if not tts.configured() or voice not in TTS_VOICES:
         raise HTTPException(404, "no such voice")
-    f = RUNS / ".voices" / f"{hashlib.sha1(f'{voice}|{tts.SAMPLE}'.encode()).hexdigest()[:16]}.wav"
+    f = RUNS / ".voices" / f"{hashlib.sha1(f'{voice}|{tts.sample_line(voice)[0]}'.encode()).hexdigest()[:16]}.wav"
     if not f.exists():
         f.parent.mkdir(exist_ok=True)
         tts.sample(voice, f)

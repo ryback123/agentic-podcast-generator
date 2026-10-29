@@ -1,11 +1,15 @@
-"""Mixing line clips into an episode, with synthetic clips (no TTS needed)."""
+"""Mixing line clips into an episode, with synthetic clips, and what is sent to the TTS (a fake client)."""
+import io
 import wave
 from pathlib import Path
+from types import SimpleNamespace
 
 import numpy as np
 
+from podcast_agent.audio import tts
 from podcast_agent.audio.mix import BACKCHANNEL_GAIN, RATE as R, _pause_near, mix
 from podcast_agent.audio.tts import lines, stitch
+from podcast_agent.config import parse_voices
 
 ONE = np.full(R, 0.1, np.float32)  # a 1 s "line" of constant level
 
@@ -57,3 +61,29 @@ def test_cut_ins_stop_or_fade_the_line_they_interrupt():
 def test_no_overlap_across_segments():
     assert len(mix([(0, "", ONE), (1, "cut", ONE)])) == int(2.8 * R)
     assert len(mix([(0, "cut", ONE)])) == R  # nothing to cut into: plays as a normal line
+
+
+def test_voices_carry_gender_and_language():
+    assert parse_voices(" Amit:male:hi, Kavya:female:hi ,plain,") == {
+        "Amit": {"gender": "male", "lang": "hi"}, "Kavya": {"gender": "female", "lang": "hi"}, "plain": {"gender": "", "lang": ""}}
+
+
+def test_each_line_is_sent_in_the_episode_language(tmp_path, monkeypatch):
+    """Bodhan's indic-speak reads the language from instructions, a JSON string."""
+    buf = io.BytesIO()
+    with wave.open(buf, "wb") as w:
+        w.setnchannels(1), w.setsampwidth(2), w.setframerate(R)
+        w.writeframes((0.3 * np.sin(2 * np.pi * 220 * np.arange(R // 2) / R) * 32767).astype(np.int16).tobytes())
+    calls = []
+
+    class Speech:
+        def create(self, **kw):
+            calls.append(kw)
+            return SimpleNamespace(content=buf.getvalue())
+
+    monkeypatch.setattr(tts, "_client", SimpleNamespace(audio=SimpleNamespace(speech=Speech())))
+    ep = {"id": "t", "dir": str(tmp_path), "log": [], "request": {"lang": "ta"},
+          "plan": {"segments": [{"turns": [["A", "வணக்கம்", ""], ["B", "training-ஆ?", ""]]}]}}
+    tts.synthesize(ep, {"A": "Arun", "B": "Anitha"})
+    assert sorted(c["voice"] for c in calls) == ["Anitha", "Arun"]
+    assert {c["instructions"] for c in calls} == {'{"lang": "ta"}'} and ep["audio"]["episode"]["seconds"] > 0.5
