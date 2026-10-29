@@ -14,7 +14,8 @@ const PLAY = '<svg viewBox="0 0 12 12" aria-hidden="true"><path d="M2 1l9 5-9 5z
 const CHECK = '<svg viewBox="0 0 16 16" aria-hidden="true"><path d="M3 8.5l3.2 3L13 4.5"/></svg>';
 const PENCIL = '<svg viewBox="0 0 16 16" aria-hidden="true"><path d="M10.5 2.5l3 3L6 13H3v-3z"/></svg>';
 
-let CFG = null, EP = null, TAB = "plan", timer = null, listTimer = null, wasRunning = false;
+let CFG = null, SETTINGS = null, EP = null, TAB = "plan", timer = null, listTimer = null, wasRunning = false;
+let LIST = []; // every episode, newest first, from /api/episodes
 const dirty = new Set(); // segment indexes with unsaved script edits
 let samples = {}; // speaker index -> sample lines written from their persona
 const player = new Audio();
@@ -99,7 +100,7 @@ function episodeSkeleton(tab) {
 }
 const coverSkeleton = () => times(4, () => `<span class="cover-link" aria-hidden="true">${sk(100, "cover-sk")}${sk(55)}</span>`);
 function homeSkeleton() {
-  paint(`${topbar()}<div class="new" aria-hidden="true"><h1>What should the episode be about?</h1>
+  paint(`<div class="new" aria-hidden="true"><h1>What should the episode be about?</h1>
     <div class="composer"><span class="sk-topic">${sk(45, "h1")}</span>
       <div class="f desc"><span>Who is it for, and how should it feel? (optional)</span>${sk(55)}</div>
       <div class="f"><span>Language</span><div class="langs">${times(12, (i) =>
@@ -110,6 +111,10 @@ function homeSkeleton() {
     <section class="shelf" aria-hidden="true"><h2>Your episodes</h2><div class="covers">${coverSkeleton()}</div></section>
     <p class="vh" role="status">Loading</p>`);
 }
+const page = (title, body) => `<div class="page"><div class="pagehead"><h1>${title}</h1><span class="hint" id="count"></span></div>${body}</div>`;
+const pageSkeleton = (v) => (v === "episodes"
+  ? `<div class="filters" aria-hidden="true">${sk("320px", "btn")}${sk("190px", "btn")}${sk("470px", "btn")}</div><div class="covers">${coverSkeleton()}</div>`
+  : times(2, (i) => `<section class="panel" aria-hidden="true">${sk(28)}${para(3, i)}</section>`)) + '<p class="vh" role="status">Loading</p>';
 
 // what the running job is working on
 const WRITES = ["making the whole episode", "running the remaining steps", "writing the script"];
@@ -127,21 +132,31 @@ function drafting() {
 }
 
 // ---------------------------------------------------------------- routing
+const PAGES = { new: () => renderHome(), episodes: () => renderEpisodes(), voices: () => renderVoices(), settings: () => renderSettings() };
+const viewOf = (view, id) => (view === "ep" && id ? "ep" : PAGES[view] ? view : "new");
+function setView(v) { // the body's data-view sets the layout; an episode belongs to the Episodes tab
+  document.body.dataset.view = v;
+  for (const a of $$(".tabs a")) {
+    if (a.dataset.tab === (v === "ep" ? "episodes" : v)) a.setAttribute("aria-current", "page");
+    else a.removeAttribute("aria-current");
+  }
+}
 async function route() {
   const [, view, id, tab] = location.hash.split("/");
   clearTimeout(timer);
   clearTimeout(listTimer);
   if (dirty.size && EP) await saveDirty();
-  document.body.classList.toggle("home", !(view === "ep" && id));
-  if (view === "ep" && id) {
+  const v = viewOf(view, id);
+  setView(v);
+  if (v === "ep") {
     TAB = STEPS.some(([k]) => k === tab) ? tab : "plan";
     if (!EP || EP.id !== id) { dirty.clear(); samples = {}; wasRunning = false; episodeSkeleton(TAB); }
     await load(id);
   } else {
     EP = null;
-    renderHome();
+    PAGES[v]();
   }
-  renderList();
+  refreshList();
 }
 
 async function load(id) {
@@ -155,7 +170,7 @@ async function load(id) {
   const running = EP.job.running;
   render();
   if (wasRunning && !running) {
-    renderList();
+    refreshList();
     if (EP.job.error) toast(EP.job.error, true);
     else toast(`Finished: ${EP.job.task}`);
   }
@@ -164,28 +179,40 @@ async function load(id) {
 }
 
 const tabOf = (e) => (e.has_audio ? "audio" : e.has_script ? "script" : "plan");
-async function renderList() {
+async function refreshList() {
   clearTimeout(listTimer);
-  const list = await api("GET", "/api/episodes").catch(() => []);
-  $("#episodes").innerHTML = list.length
-    ? list.map((e) => {
-        const state = e.running ? '<span class="live">in progress</span>' : e.has_audio ? "audio ready" : e.has_script ? "script ready" : "planned";
-        return `<a class="ep-link" href="#/ep/${e.id}/${tabOf(e)}" ${e.id === EP?.id ? 'aria-current="page"' : ""}>
-          <span class="t" lang="${e.lang}">${esc(e.title)}</span><span class="s">${NATIVE[e.lang] || e.lang}, ${state}</span></a>`;
-      }).join("")
-    : '<p class="ep-link s">Your episodes will appear here.</p>';
-  const covers = $("#covers"), pill = $("#onair"), live = list.filter((e) => e.running);
-  if (!covers) return;
-  covers.innerHTML = list.map(cover).join("") || '<p class="hint">Your episodes will appear here.</p>';
-  pill.innerHTML = live.length ? `<a class="onair" href="#/ep/${live[0].id}/${tabOf(live[0])}"><i class="dot on"></i>
+  LIST = await api("GET", "/api/episodes").catch(() => LIST);
+  const live = LIST.filter((e) => e.running);
+  $("#onair").innerHTML = live.length ? `<a class="onair" href="#/ep/${live[0].id}/${tabOf(live[0])}"><i class="dot on"></i>
     ${live.length} ${live.length > 1 ? "episodes" : "episode"} in progress</a>` : "";
+  fillCovers();
   syncShimmer();
-  if (live.length) listTimer = setTimeout(renderList, 3000); // keep the in-progress states current
+  if (live.length) listTimer = setTimeout(refreshList, 3000); // keep the in-progress states current
+}
+function fillCovers() {
+  const box = $("#covers");
+  if (!box) return;
+  if (document.body.dataset.view === "new") {
+    box.innerHTML = LIST.slice(0, RECENT).map(cover).join("") || '<p class="hint">Your episodes will appear here.</p>';
+    $("#seeall").hidden = LIST.length <= RECENT;
+    $("#seeall").textContent = `See all ${LIST.length}`;
+    return;
+  }
+  const found = filtered();
+  box.innerHTML = found.slice(0, SHOWN).map(cover).join("")
+    || `<p class="hint">${LIST.length ? "No episodes match these filters." : "Your episodes will appear here."}</p>`;
+  $("#count").textContent = found.length === LIST.length ? `${LIST.length} episodes` : `${found.length} of ${LIST.length} episodes`;
+  $("#more").hidden = found.length <= SHOWN;
 }
 
 // ---------------------------------------------------------------- home: new episode and your episodes
-const topbar = () => `<header class="topbar"><div><a class="brand" href="#/new"><i class="dot"></i>Podcast Studio</a>
-  <span id="onair"></span></div></header>`;
+const RECENT = 8; // covers on the New tab; the Episodes tab has the rest
+const langChips = (sel) => `<div class="langs" role="radiogroup" aria-label="Language">${CFG.languages.map((l) =>
+  `<label><input type="radio" name="lang" value="${l.code}" ${l.code === sel ? "checked" : ""}>
+    <span lang="${l.code}">${NATIVE[l.code] || l.name}<small>${l.name}</small></span></label>`).join("")}</div>`;
+const mixBox = (sel, lang) => `<div class="f mixbox" ${lang === "en" ? "hidden" : ""}><span>English mixing</span>
+  <div class="seg">${CFG.code_mix.map((m) => `<label><input type="radio" name="code_mix" value="${m}" ${m === sel ? "checked" : ""}><span>${cap(m)}</span></label>`).join("")}</div>
+  <p class="hint mixhint">${MIX[sel]}</p></div>`;
 const stepper = (name, label, min, max, value, unit, less, more) => `<div class="f"><span id="${name}-l">${label}</span>
   <div class="stepper" role="group" aria-labelledby="${name}-l">
     <button class="btn" type="button" data-act="step" data-name="${name}" data-d="-1" aria-label="${less}">−</button>
@@ -194,22 +221,18 @@ const stepper = (name, label, min, max, value, unit, less, more) => `<div class=
     <button class="btn" type="button" data-act="step" data-name="${name}" data-d="1" aria-label="${more}">+</button></div></div>`;
 
 function renderHome() {
-  paint(`${topbar()}<form class="new" id="newform">
+  const s = SETTINGS;
+  paint(`<form class="new" id="newform">
     <h1>What should the episode be about?</h1>
     <div class="composer">
       <textarea class="topic" name="topic" rows="2" required aria-label="Topic" placeholder="How UPI payments work"></textarea>
       <label class="f desc"><span>Who is it for, and how should it feel? (optional)</span>
         <textarea name="description" rows="1" placeholder="Class 8 students; friendly, with everyday examples"></textarea></label>
-      <div class="f"><span>Language</span><div class="langs" role="radiogroup" aria-label="Language">
-        ${CFG.languages.map((l) => `<label><input type="radio" name="lang" value="${l.code}" ${l.code === "hi" ? "checked" : ""}>
-          <span lang="${l.code}">${NATIVE[l.code] || l.name}<small>${l.name}</small></span></label>`).join("")}
-      </div></div>
+      <div class="f"><span>Language</span>${langChips(s.lang)}</div>
       <div class="row">
-        ${stepper("speakers", "Speakers", 2, 5, 2, "", "Fewer speakers", "More speakers")}
-        ${stepper("minutes", "Length", 5, 20, 12, "min", "Shorter", "Longer")}
-        <div class="f" id="mixbox"><span>English mixing</span>
-          <div class="seg">${CFG.code_mix.map((m) => `<label><input type="radio" name="code_mix" value="${m}" ${m === "medium" ? "checked" : ""}><span>${cap(m)}</span></label>`).join("")}</div>
-          <p class="hint" id="mixhint">${MIX.medium}</p></div>
+        ${stepper("speakers", "Speakers", 2, 5, s.speakers, "", "Fewer speakers", "More speakers")}
+        ${stepper("minutes", "Length", 5, 20, s.minutes, "min", "Shorter", "Longer")}
+        ${mixBox(s.code_mix, s.lang)}
       </div>
       <div class="bar">
         <button class="btn btn-primary" type="submit" value="auto">Make the whole episode</button>
@@ -218,7 +241,130 @@ function renderHome() {
       <p class="hint">Making the whole episode runs planning, research and writing in one go, which takes about five to eight minutes.
         Planning first lets you change the cast and outline before research starts.</p>
     </div></form>
-    <section class="shelf" aria-label="Your episodes"><h2>Your episodes</h2><div class="covers" id="covers">${coverSkeleton()}</div></section>`);
+    <section class="shelf" aria-label="Your episodes"><div class="shelfhead"><h2>Your episodes</h2>
+      <a href="#/episodes" id="seeall" hidden>See all</a></div><div class="covers" id="covers">${coverSkeleton()}</div></section>`);
+}
+
+// ---------------------------------------------------------------- Episodes tab
+const STATES = [["", "All"], ["running", "In progress"], ["script", "Script ready"], ["audio", "Audio ready"], ["none", "No script yet"]];
+const stateOf = (e) => (e.running ? "running" : e.has_audio ? "audio" : e.has_script ? "script" : "none");
+const FIND = { q: "", lang: "", state: "" };
+let SHOWN = 24;
+// ponytail: search and filters run in the browser over the whole list; past a few thousand episodes, page and filter
+// on the server from an index (SQLite) instead
+function filtered() {
+  const q = FIND.q.trim().toLowerCase();
+  return LIST.filter((e) => (!FIND.lang || e.lang === FIND.lang) && (!FIND.state || stateOf(e) === FIND.state)
+    && (!q || `${e.title} ${e.topic}`.toLowerCase().includes(q)));
+}
+function renderEpisodes() {
+  paint(page("Episodes", `<div class="filters">
+      <input type="search" id="find-q" placeholder="Search titles and topics" aria-label="Search episodes" value="${esc(FIND.q)}">
+      <select id="find-lang" aria-label="Language"><option value="">All languages</option>${CFG.languages.map((l) =>
+        `<option value="${l.code}" ${l.code === FIND.lang ? "selected" : ""}>${NATIVE[l.code] || l.name} (${l.name})</option>`).join("")}</select>
+      <div class="seg" role="radiogroup" aria-label="State">${STATES.map(([v, l]) =>
+        `<label><input type="radio" name="find-state" value="${v}" ${v === FIND.state ? "checked" : ""}><span>${l}</span></label>`).join("")}</div>
+    </div>
+    <div class="covers" id="covers">${coverSkeleton()}</div>
+    <div class="bar morebar"><button class="btn btn-line" type="button" id="more" data-act="more" hidden>Show more</button></div>`));
+  if (LIST.length) fillCovers();
+}
+
+// ---------------------------------------------------------------- Voices tab
+function renderVoices() {
+  const V = CFG.tts.voices;
+  if (!CFG.tts.configured || !V.length) {
+    return paint(page("Voices", `<div class="empty"><p>Audio isn't connected yet. Once the server has a text-to-speech service
+      (TTS_BASE_URL and TTS_VOICES), its voices appear here: play a sample of each and pick the default voice for female and
+      male speakers.</p></div>`));
+  }
+  const opts = (sel) => `<option value="">The first free voice</option>${V.map((v) => `<option ${v === sel ? "selected" : ""}>${esc(v)}</option>`).join("")}`;
+  paint(page("Voices", `<p class="hint lede">Play a sample to hear each voice. New speakers get the default for their gender, unless another
+      speaker already has it; you can still change any speaker's voice in an episode's Audio step.</p>
+    <form class="panel" id="voiceform"><div class="row">
+      <label class="f"><span>Default for female speakers</span><select name="voice_female">${opts(SETTINGS.voice_female)}</select></label>
+      <label class="f"><span>Default for male speakers</span><select name="voice_male">${opts(SETTINGS.voice_male)}</select></label>
+      </div><div class="bar"><button class="btn btn-primary" type="submit">Save default voices</button></div></form>
+    <ul class="voicelist">${V.map((v) => `<li><button class="play" type="button" data-act="play"
+        data-src="/api/voices/${encodeURIComponent(v)}/sample.wav" aria-label="Play a sample of ${esc(v)}">${PLAY}</button>
+      <b>${esc(v)}</b>${v === SETTINGS.voice_female ? '<span class="tag">female default</span>' : ""}${
+        v === SETTINGS.voice_male ? '<span class="tag">male default</span>' : ""}</li>`).join("")}</ul>`));
+}
+// the Audio step's starting voices: saved choices, then the gender's default if no one has it yet, then the first free one
+function pickVoices(speakers, saved) {
+  const V = CFG.tts.voices, used = new Set(), out = {};
+  for (const s of speakers) if (V.includes(saved[s.name])) { out[s.name] = saved[s.name]; used.add(saved[s.name]); }
+  for (const s of speakers) {
+    if (out[s.name]) continue;
+    const d = { female: SETTINGS.voice_female, male: SETTINGS.voice_male }[s.gender];
+    out[s.name] = V.includes(d) && !used.has(d) ? d : V.find((v) => !used.has(v)) || V[0];
+    used.add(out[s.name]);
+  }
+  return out;
+}
+
+// ---------------------------------------------------------------- Settings tab
+const getTheme = () => { try { return localStorage.getItem("theme") || "system"; } catch { return "system"; } };
+function setTheme(t) { // kept in this browser; index.html applies it before the page draws
+  try { if (t === "system") localStorage.removeItem("theme"); else localStorage.setItem("theme", t); } catch { /* private window */ }
+  if (t === "system") delete document.documentElement.dataset.theme;
+  else document.documentElement.dataset.theme = t;
+}
+const okDot = (ok) => `<i class="ok ${ok ? "yes" : "no"}" aria-hidden="true"></i>`;
+const size = (b) => (b >= 1e9 ? `${(b / 1e9).toFixed(1)} GB` : `${(b / 1e6).toFixed(1)} MB`);
+const statusList = (st) => (st.error ? `<p class="hint">Could not check the services: ${esc(st.error)}</p>` : `<dl class="status">
+  <dt>Script model</dt><dd>${okDot(st.model.ok)}${esc(st.model.name)}, ${st.model.ok ? "reachable" : `not reachable (${esc(st.model.error)})`}</dd>
+  <dt>Web search</dt><dd>${okDot(st.web_search.key)}${st.web_search.key ? "Tavily key set" : "No Tavily key, so research uses Wikipedia only"};
+    ${st.web_search.credits} credits used so far</dd>
+  <dt>Text to speech</dt><dd>${okDot(st.tts.configured)}${st.tts.configured ? `connected, ${st.tts.voices} voices` : "not connected"}</dd>
+  <dt>Storage</dt><dd>${st.storage.episodes} episodes, ${size(st.storage.bytes)}</dd></dl>`);
+async function renderSettings() {
+  paint(page("Settings", pageSkeleton("settings")));
+  let st;
+  [SETTINGS, st] = await Promise.all([api("GET", "/api/settings"), api("GET", "/api/status").catch((e) => ({ error: e.message }))]);
+  if (document.body.dataset.view !== "settings") return; // left the tab while it loaded
+  const s = SETTINGS, theme = getTheme();
+  paint(page("Settings", `<form id="settingsform" class="settings">
+    <section class="panel"><h2>New episodes</h2><p class="hint">What the New tab starts with; each episode can still change them.</p>
+      <div class="f"><span>Language</span>${langChips(s.lang)}</div>
+      <div class="row">
+        ${stepper("speakers", "Speakers", 2, 5, s.speakers, "", "Fewer speakers", "More speakers")}
+        ${stepper("minutes", "Length", 5, 20, s.minutes, "min", "Shorter", "Longer")}
+        ${mixBox(s.code_mix, s.lang)}
+      </div></section>
+    <section class="panel"><h2>Agents</h2><p class="hint">Used by every job that starts from now on.</p>
+      <div class="row">
+        ${stepper("research_steps", "Research steps", 4, 40, s.research_steps, "", "Fewer steps", "More steps")}
+        ${stepper("review_rounds", "Review rounds per segment", 0, 3, s.review_rounds, "", "Fewer rounds", "More rounds")}
+      </div>
+      <p class="hint">A research step is one search or one page read; a web search costs about one Tavily credit, and the
+        researcher stops early once every question has two facts. A review round is a fact-check and an editor's pass on a
+        segment, then fixes.</p>
+      <label class="check"><input type="checkbox" name="web_search" ${s.web_search ? "checked" : ""}>
+        Search the whole web with Tavily. When off, research uses Wikipedia only, which costs no credits.</label></section>
+    <section class="panel"><h2>Appearance</h2>
+      <div class="seg" role="radiogroup" aria-label="Theme">${[["system", "Same as the system"], ["light", "Light"], ["dark", "Dark"]].map(([v, l]) =>
+        `<label><input type="radio" name="theme" value="${v}" ${v === theme ? "checked" : ""}><span>${l}</span></label>`).join("")}</div>
+      <p class="hint">Changes straight away and is kept in this browser only.</p></section>
+    <div class="bar"><button class="btn btn-primary" type="submit">Save settings</button></div></form>
+    <section class="panel"><h2>Services</h2><p class="hint">Server addresses and keys are set on the server, not here.</p>
+      ${statusList(st)}</section>`));
+}
+async function saveSettings(form) {
+  const body = { ...SETTINGS, lang: form.lang.value, speakers: +form.speakers.value, minutes: +form.minutes.value,
+    code_mix: form.code_mix.value, research_steps: +form.research_steps.value, review_rounds: +form.review_rounds.value,
+    web_search: form.web_search.checked };
+  try {
+    SETTINGS = await api("PUT", "/api/settings", body);
+    toast("Settings saved");
+  } catch (e) { toast(e.message, true); }
+}
+async function saveVoices(form) {
+  try {
+    SETTINGS = await api("PUT", "/api/settings", { ...SETTINGS, voice_female: form.voice_female.value, voice_male: form.voice_male.value });
+    toast("Default voices saved");
+    renderVoices();
+  } catch (e) { toast(e.message, true); }
 }
 
 // an episode's cover: a colour and a few speech blocks per speaker, the same every time for that episode
@@ -249,9 +395,9 @@ function cover(e) { // an uploaded image fills the cover and the title goes unde
     : `<span class="cover" style="${coverColours(e.id)}">${top}<span class="lanes" aria-hidden="true">${lanes(e.speakers || 2, hash(e.id))}</span>${t}</span>`;
   return `<a class="cover-link" href="#/ep/${e.id}/${tabOf(e)}">${art}${state}</a>`;
 }
-function updateNewForm(form) {
-  $("#mixbox").hidden = form.lang.value === "en";
-  $("#mixhint").textContent = MIX[form.code_mix.value];
+function updateNewForm(form) { // the new-episode form and Settings: no English mixing for English
+  $(".mixbox", form).hidden = form.lang.value === "en";
+  $(".mixhint", form).textContent = MIX[form.code_mix.value];
 }
 async function submitNew(form, mode) {
   const body = { topic: form.topic.value, description: form.description.value, lang: form.lang.value,
@@ -300,7 +446,9 @@ function render() {
       <h1 class="${/[^\x00-\x7F]/.test(title) ? "native" : ""}" lang="${r.lang}">${esc(title)}</h1>
       <div class="meta"><span>${NATIVE[r.lang]}</span><span>${r.speakers} speakers</span><span>${r.minutes} minute target</span>
         ${r.lang !== "en" ? `<span>${cap(r.code_mix)} English mixing</span>` : ""}<span>Topic: ${esc(r.topic)}</span>
-        ${EP.cover ? '<button class="linkish" type="button" data-act="dropCover">Remove cover</button>' : ""}</div>
+        ${EP.cover ? '<button class="linkish" type="button" data-act="dropCover">Remove cover</button>' : ""}
+        <button class="linkish" type="button" data-act="duplicate">Duplicate</button>
+        <button class="linkish" type="button" data-act="deleteEp">Delete</button></div>
     </div></div>${lamp}</div>
     <nav class="steps" aria-label="Steps">${STEPS.map(([k, l], i) => {
       const st = stepState(k), mark = st === "live" ? '<i class="dot on"></i>' : st === "done" ? CHECK : `<b>${i + 1}</b>`;
@@ -405,7 +553,7 @@ const VIEWS = {
     if (!CFG.tts.configured) {
       return empty("Audio needs a text-to-speech service. Start the server with TTS_BASE_URL and TTS_VOICES set, then reload this page.");
     }
-    const voices = EP.audio?.voices || {}, V = CFG.tts.voices, ep = EP.audio?.episode;
+    const picked = pickVoices(EP.plan.speakers, EP.audio?.voices || {}), V = CFG.tts.voices, ep = EP.audio?.episode;
     const ready = EP.lines.filter((l) => l.ready).length, busy = EP.job.running && EP.job.task === "generating audio";
     return `${busy && !ep ? playerSkeleton() : ""}${ep ? `<div class="player"><h2>Episode</h2>
         <audio controls preload="none" src="${file(ep.file)}?v=${ep.built}"></audio>
@@ -414,7 +562,7 @@ const VIEWS = {
           <a class="btn btn-quiet" href="${file("episode.wav")}" download>WAV</a></div></div>` : ""}
       <section><h2>Voices</h2><div class="voices">${EP.plan.speakers.map((s, i) => `
         <label class="f" style="--c:${color(i)}"><b>${esc(s.name)}</b><span>${esc(s.gender)}, ${esc(s.role)}</span>
-          <select data-voice="${esc(s.name)}">${V.map((v) => `<option ${(voices[s.name] || V[i % V.length]) === v ? "selected" : ""}>${esc(v)}</option>`).join("")}</select></label>`).join("")}
+          <select data-voice="${esc(s.name)}">${V.map((v) => `<option ${picked[s.name] === v ? "selected" : ""}>${esc(v)}</option>`).join("")}</select></label>`).join("")}
         </div>
         <div class="bar" style="margin-top:12px"><button class="btn btn-primary" data-act="genAudio">${ready ? "Update audio" : "Generate audio"}</button>
           <span class="hint">${ready} of ${EP.lines.length} lines have audio${ready && ready < EP.lines.length ? "; only new or changed lines are generated" : ""}.</span></div></section>
@@ -508,13 +656,31 @@ async function act(method, path, body, msg) {
     await api(method, `/api/episodes/${EP.id}${path}`, body);
     if (msg) toast(msg);
     await load(EP.id);
-    renderList();
+    refreshList();
   } catch (e) {
     toast(e.message, true);
   }
 }
 
 const ACTIONS = {
+  more: () => { SHOWN += 24; fillCovers(); },
+  duplicate: async () => {
+    try {
+      const { id } = await api("POST", `/api/episodes/${EP.id}/duplicate`);
+      toast("Copied. Planning the copy now.");
+      location.hash = `#/ep/${id}/plan`;
+    } catch (e) { toast(e.message, true); }
+  },
+  deleteEp: async () => {
+    if (!confirm(`Delete "${EP.plan?.title || EP.request.topic}"? It leaves your episodes and moves to the trash folder on the server.`)) return;
+    try {
+      await api("DELETE", `/api/episodes/${EP.id}`);
+      dirty.clear();
+      EP = null;
+      toast("Deleted");
+      location.hash = "#/episodes";
+    } catch (e) { toast(e.message, true); }
+  },
   pickCover: () => $("#coverfile").click(), // the input lives outside #main, so a re-render can't drop the pick
   dropCover: () => act("DELETE", "/cover", undefined, "Cover removed"),
   step: (b) => { // the − and + beside speakers and length; the number input keeps it within min and max
@@ -604,8 +770,8 @@ const ACTIONS = {
     $$(".play.playing").forEach((x) => x.classList.remove("playing"));
     if (playing) return player.pause();
     player.src = b.dataset.src;
-    player.play();
     b.classList.add("playing");
+    player.play().catch(() => { b.classList.remove("playing"); toast("Could not play this.", true); });
     player.onended = () => b.classList.remove("playing");
   },
 };
@@ -621,12 +787,19 @@ document.addEventListener("input", (e) => {
   const t = e.target;
   if (t.matches("textarea.auto")) autosize(t);
   if (t.form?.id === "newform") updateNewForm(t.form);
+  if (t.id === "find-q") { FIND.q = t.value; SHOWN = 24; fillCovers(); }
   const sh = t.closest(".sheet");
   if (sh && t.name !== "note") markDirty(+sh.dataset.seg);
 });
 document.addEventListener("change", (e) => {
   const t = e.target;
-  if (t.form?.id === "newform") updateNewForm(t.form);
+  if (t.form?.id === "newform" || t.form?.id === "settingsform") updateNewForm(t.form);
+  if (t.name === "theme") setTheme(t.value);
+  if (t.id === "find-lang" || t.name === "find-state") {
+    FIND[t.id === "find-lang" ? "lang" : "state"] = t.value;
+    SHOWN = 24;
+    fillCovers();
+  }
   const ln = t.closest(".ln");
   if (ln && t.tagName === "SELECT") {
     if (t.matches(".sp")) ln.style.setProperty("--c", chanOf(t.value));
@@ -635,9 +808,10 @@ document.addEventListener("change", (e) => {
   }
 });
 document.addEventListener("submit", (e) => {
-  if (e.target.id !== "newform") return;
+  const f = e.target, run = { newform: () => submitNew(f, e.submitter?.value), settingsform: () => saveSettings(f), voiceform: () => saveVoices(f) }[f.id];
+  if (!run) return;
   e.preventDefault();
-  submitNew(e.target, e.submitter?.value);
+  run();
 });
 // a picked cover is cropped to a centred square of at most 1000 px and re-encoded here, which keeps covers small
 // and drops the photo's metadata, then uploaded
@@ -656,18 +830,19 @@ $("#coverfile").addEventListener("change", async (e) => {
     if (!r.ok) throw new Error((await r.json().catch(() => ({}))).detail || `${r.status} ${r.statusText}`);
     toast("Cover updated");
     if (EP?.id === id) load(id);
-    renderList();
+    refreshList();
   } catch (err) { toast(err.message, true); }
 });
 window.addEventListener("hashchange", route);
 window.addEventListener("beforeunload", (e) => { if (dirty.size) e.preventDefault(); });
 
 (async () => {
-  const [, view, id, tab] = location.hash.split("/");
-  document.body.classList.toggle("home", !(view === "ep" && id));
-  if (view === "ep" && id) episodeSkeleton(STEPS.some(([k]) => k === tab) ? tab : "plan");
-  else homeSkeleton();
-  CFG = await api("GET", "/api/config");
+  const [, view, id, tab] = location.hash.split("/"), v = viewOf(view, id);
+  setView(v);
+  if (v === "ep") episodeSkeleton(STEPS.some(([k]) => k === tab) ? tab : "plan");
+  else if (v === "new") homeSkeleton();
+  else paint(page(cap(v), pageSkeleton(v)));
+  [CFG, SETTINGS] = await Promise.all([api("GET", "/api/config"), api("GET", "/api/settings")]);
   if (!location.hash || location.hash === "#") location.hash = "#/new";
   else route();
 })();

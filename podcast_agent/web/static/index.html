@@ -8,17 +8,21 @@
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Anek+Latin:wdth,wght@75..125,100..800&family=Anek+Devanagari:wdth,wght@75..125,100..800&family=Anek+Bangla:wdth,wght@75..125,100..800&family=Anek+Tamil:wdth,wght@75..125,100..800&family=Anek+Telugu:wdth,wght@75..125,100..800&family=Anek+Gujarati:wdth,wght@75..125,100..800&family=Anek+Kannada:wdth,wght@75..125,100..800&family=Anek+Malayalam:wdth,wght@75..125,100..800&family=Anek+Odia:wdth,wght@75..125,100..800&family=Anek+Gurmukhi:wdth,wght@75..125,100..800&display=swap">
 <link rel="stylesheet" href="style.css">
+<script>/* the theme picked in Settings, before the page draws */
+try { const t = localStorage.getItem("theme"); if (t === "light" || t === "dark") document.documentElement.dataset.theme = t; } catch (e) {}
+</script>
 </head>
 <body>
-<aside class="rail">
+<header class="topbar"><div>
   <a class="brand" href="#/new"><i class="dot"></i>Podcast Studio</a>
-  <a class="btn btn-new" href="#/new">New episode</a>
-  <nav id="episodes" aria-label="Episodes">
-    <span class="ep-link sk-item" aria-hidden="true"><i class="sk" style="width:88%"></i><i class="sk" style="width:60%"></i><i class="sk" style="width:38%"></i></span>
-    <span class="ep-link sk-item" aria-hidden="true"><i class="sk" style="width:80%"></i><i class="sk" style="width:45%"></i><i class="sk" style="width:34%"></i></span>
-    <span class="ep-link sk-item" aria-hidden="true"><i class="sk" style="width:92%"></i><i class="sk" style="width:70%"></i><i class="sk" style="width:40%"></i></span>
+  <nav class="tabs" aria-label="Main">
+    <a href="#/new" data-tab="new">New</a>
+    <a href="#/episodes" data-tab="episodes">Episodes</a>
+    <a href="#/voices" data-tab="voices">Voices</a>
+    <a href="#/settings" data-tab="settings">Settings</a>
   </nav>
-</aside>
+  <span id="onair"></span>
+</div></header>
 <main id="main"></main>
 <div id="toast" role="status" aria-live="polite"></div>
 <input type="file" id="coverfile" accept="image/*" hidden>

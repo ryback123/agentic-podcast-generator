@@ -12,10 +12,10 @@ def write_all(ep, max_revisions=2, only_missing=False):
     update_stats(ep)
 
 
-def run_all(ep, max_research_steps=20, max_revisions=2):
+def run_all(ep, max_research_steps=20, max_revisions=2, web=True):
     """Everything still missing: plan -> research -> unwritten segments."""
     if not ep["plan"]:
         produce(ep)
     if not ep["facts"]:
-        research(ep, max_research_steps)
+        research(ep, max_research_steps, web)
     write_all(ep, max_revisions, only_missing=True)

@@ -60,9 +60,18 @@ To serve a model yourself, for example: `vllm serve google/gemma-4-31B-it --serv
 python -m uvicorn podcast_agent.web.app:app --host 127.0.0.1 --port 8842
 ```
 
-Open http://127.0.0.1:8842. The home page has the new-episode form and your episodes, with the ones being made marked
-in progress. Click the square beside an episode's title to give it a cover image (cropped to a square in the browser;
-saved as `cover.jpg` in the episode folder). An episode walks through Plan → Research → Script → Audio:
+Open http://127.0.0.1:8842. It has four tabs:
+
+- **New:** the new-episode form and your latest episodes; the ones being made show as in progress.
+- **Episodes:** every episode, with search and filters for language and state. An episode's page has Duplicate (the
+  same request, planned afresh) and Delete, which moves its folder to `.trash/` in the episodes folder.
+- **Voices:** a sample of each TTS voice, and the default voice for female and male speakers.
+- **Settings:** defaults for new episodes, the research step budget, review rounds per segment, web search on or off,
+  light or dark, and whether the model, web search and TTS are working. Saved in `settings.json` in the episodes
+  folder; server addresses and keys stay in the environment.
+
+Click the square beside an episode's title to give it a cover image (cropped to a square in the browser; saved as
+`cover.jpg` in the episode folder). An episode walks through Plan → Research → Script → Audio:
 
 - **Plan:** edit the cast and outline. Speaker names are made up by the producer; rename anyone at any time, and the
   script lines and voice choices follow. Each speaker has a persona, a few sentences on who they are and how they

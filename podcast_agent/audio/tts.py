@@ -47,6 +47,14 @@ def _tts(text, voice, path):
     os.replace(tmp, path)  # a crash never leaves a half-written clip that looks finished
 
 
+# what a voice says on the Voices tab: English and Hindi, as an everyday mixed line
+SAMPLE = "Hi, I could be one of your speakers. आज हम बात करेंगे कि vaccines हमारी body को कैसे train करती हैं।"
+
+
+def sample(voice, path):
+    _tts(SAMPLE, voice, path)
+
+
 def synthesize(ep, voices=None, workers=4):
     """Synthesize every line that has no clip yet, then stitch the episode."""
     if not configured():

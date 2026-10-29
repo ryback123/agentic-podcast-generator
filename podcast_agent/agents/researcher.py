@@ -30,15 +30,17 @@ def take_notes(ep, hit):
     return facts, None
 
 
-def research(ep, max_steps=20):
-    """Tool loop: the agent picks search / read / done until questions are covered. Starts a fresh fact sheet."""
+def research(ep, max_steps=20, web=True):
+    """Tool loop: the agent picks search / read / done until questions are covered. Starts a fresh fact sheet.
+    web=False keeps it to Wikipedia even when a Tavily key is set (Settings: web search off)."""
+    web = web and bool(search.TAVILY_KEY)
     plan, qs = ep["plan"], ep["questions"]
     ep["facts"] = []
     name, _, wiki = LANGS[ep["request"]["lang"]]
     lang_note = (f'lang is "en" or "{wiki}" ({name} Wikipedia); English usually has more detail.'
                  if wiki != "en" else 'lang must be "en".')
     wiki_note = f"Wikipedia queries are 2-4 words (a topic name, not a question); {lang_note}"
-    if search.TAVILY_KEY:
+    if web:
         sources = '"web" | "wikipedia"'
         search_note = ('source "web" searches the whole web: best for news, statistics, recent or local topics; '
                        f'queries can be a short phrase. Source "wikipedia" is best for background. {wiki_note}')
@@ -66,14 +68,14 @@ def research(ep, max_steps=20):
             ep["research_stats"] = {"steps": step, "credits": credits}
             log(ep, "researcher", f"done: {args.get('reason', '')} ({credits} search credits)", thought=act.get("thought"))
             return
-        source = args.get("source") or ("web" if search.TAVILY_KEY else "wikipedia")
+        source = args.get("source") or ("web" if web else "wikipedia")
         key = (args.get("query", "").lower().strip(), source, args.get("lang", "en"))
         n_words = len(args.get("query", "").split())
         if tool == "search" and n_words > 10:  # long multi-question queries return poor results and waste credits
             obs = f"query too long ({n_words} words): search for one question in at most 8 words"
         elif tool == "search" and key in searched:
             obs = "already searched; read one of the results above or try a different query"
-        elif tool == "search" and source == "web" and not search.TAVILY_KEY:
+        elif tool == "search" and source == "web" and not web:
             obs = 'web search is not configured; use source "wikipedia"'
         elif tool == "search":
             searched.add(key)
