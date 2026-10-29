@@ -147,6 +147,7 @@ async function route() {
   if (dirty.size && EP) await saveDirty();
   const v = viewOf(view, id);
   setView(v);
+  window.scrollTo(0, 0); // a new page starts at its top, not where the last one was scrolled to
   if (v === "ep") {
     TAB = STEPS.some(([k]) => k === tab) ? tab : "plan";
     if (!EP || EP.id !== id) { dirty.clear(); samples = {}; wasRunning = false; episodeSkeleton(TAB); }
