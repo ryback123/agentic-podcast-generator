@@ -142,6 +142,8 @@ Course runs on our cluster:
     the same again after fixing the hyphen check (code `02c8093`).
   - [wordcritic3_20261029](</projects/data/ttsteam/nikhil/runs/podcast_agent_evals/runs/wordcritic3_20261029/summary.md>):
     the same again after fixing the accented-word check and cut-off replies.
+  - [swapfix_20261029](</projects/data/ttsteam/nikhil/runs/podcast_agent_evals/runs/swapfix_20261029/summary.md>):
+    the same again after stopping the editor swapping native words for English (code `ed7a82f`).
 
 ## Licence
 
