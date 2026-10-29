@@ -71,7 +71,7 @@ function planSkeleton(speakers = 2, minutes = 10) {
 }
 const factsSkeleton = (seed) => `<ul class="facts" aria-hidden="true">${times(3, (k) => `<li>${para(1 + ((seed + k) % 2), seed + k)}</li>`)}</ul>`;
 const researchSkeleton = () => `<div class="qs" aria-hidden="true">${times(4, (i) => `<div class="q"><header>${sk(W[i] * 0.6)}
-  <span class="pips">${times(3, () => "<i></i>")}</span></header>${factsSkeleton(i)}</div>`)}</div>`;
+  ${sk("52px", "n")}</header>${factsSkeleton(i)}</div>`)}</div>`;
 const statsSkeleton = () => `<div class="stats" aria-hidden="true">${[["56px", "120px"], ["36px", "40px"], ["32px", "80px"]].map(([a, b]) =>
   `<div>${sk(a, "num")}${sk(b)}</div>`).join("")}<div class="share">${sk("130px")}${sk(100, "bar10")}${sk("55%")}</div></div>`;
 // script lines: speakers take turns, and every fifth line is a short filler
@@ -373,7 +373,7 @@ const VIEWS = {
       ${qs.length ? `<div class="qs">${qs.map(([q, t], qi) => {
         const fs = EP.facts.filter((f) => f.q === q);
         return `<div class="q"><header><h3>${esc(t)}</h3>
-          <span class="pips" title="${fs.length} facts" aria-label="${fs.length} facts">${[0, 1, 2].map((k) => `<i class="${fs.length > k ? "on" : ""}"></i>`).join("")}</span></header>
+          <span class="n ${fs.length ? "" : "none"}">${fs.length ? `${fs.length} ${fs.length > 1 ? "facts" : "fact"}` : "No facts yet"}</span></header>
           ${fs.length ? `<ul class="facts">${fs.map((f) => `<li>${esc(f.fact)} <a href="${esc(f.url)}" target="_blank" rel="noopener">${esc(f.source)}</a></li>`).join("")}</ul>` : busy ? factsSkeleton(qi) : ""}</div>`;
       }).join("")}</div>` : '<p class="hint">This plan has no research questions, so the writer will use common knowledge only.</p>'}
       ${steps.length ? `<details class="trace" ${EP.job.running ? "open" : ""}><summary>How the research agent worked (${steps.length} steps)</summary>

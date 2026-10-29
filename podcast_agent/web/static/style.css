@@ -1,4 +1,4 @@
-/* Colours from Indian dyes: indigo ink, turmeric for meters and marks, rani pink only for work in progress and the main
+/* Colours from Indian dyes: indigo ink, turmeric for open issues, rani pink only for work in progress and the main
    button. One type family, Anek, for English and every Indian script, so mixed lines read as one voice. */
 :root {
   --board: #F6F5FA;      /* page background, a pale indigo */
@@ -11,7 +11,6 @@
   --onair: #C8195F;      /* rani pink: work in progress, errors */
   --lamp: #E83B80;       /* the lamp itself */
   --go: #C8195F;         /* the main button, white text on it in both themes */
-  --amber: #F4B71E;      /* turmeric: meters, issues */
   --amber-ink: #6E4A00;
   --amber-wash: #FDF0C8;
   --sk: #ECEAF4; --sk-hi: #F9F8FC;   /* loading placeholders, on a sheet */
@@ -228,9 +227,9 @@ output { font-weight: 650; color: var(--ink); }
 .qs { display: flex; flex-direction: column; gap: 10px; }
 .q { background: var(--sheet); border-radius: 8px; padding: 12px 14px; }
 .q header { display: flex; gap: 12px; align-items: baseline; justify-content: space-between; }
-.pips { display: inline-flex; gap: 3px; flex-shrink: 0; }
-.pips i { width: 9px; height: 14px; border-radius: 2px; background: var(--line); }
-.pips i.on { background: var(--amber); }
+.q header .n { flex-shrink: 0; font-size: 14px; font-weight: 650; white-space: nowrap; }
+.q header .n.none { font-weight: 400; color: var(--muted); }
+.q header .sk.n { flex-shrink: 0; }
 .facts { margin: 8px 0 0; padding-left: 18px; color: var(--ink); }
 .facts li { margin: 4px 0; }
 .facts a { color: var(--muted); font-size: 13px; }
