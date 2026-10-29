@@ -144,6 +144,8 @@ Course runs on our cluster:
     the same again after fixing the accented-word check and cut-off replies.
   - [swapfix_20261029](</projects/data/ttsteam/nikhil/runs/podcast_agent_evals/runs/swapfix_20261029/summary.md>):
     the same again after stopping the editor swapping native words for English (code `ed7a82f`).
+  - [budget_20261029](</projects/data/ttsteam/nikhil/runs/podcast_agent_evals/runs/budget_20261029/summary.md>):
+    the same again with an English budget for medium code-mixing (code `eab1a98`).
 
 ## Licence
 
