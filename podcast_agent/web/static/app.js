@@ -108,7 +108,6 @@ function homeSkeleton() {
       <div class="row">${["Speakers", "Length"].map((l) => `<div class="f"><span>${l}</span>${sk("150px", "btn")}</div>`).join("")}
         <div class="f"><span>English mixing</span>${sk("240px", "btn")}</div></div>
       <div class="bar">${sk("240px", "btn")}${sk("220px", "btn")}</div></div></div>
-    <section class="shelf" aria-hidden="true"><h2>Your episodes</h2><div class="covers">${coverSkeleton()}</div></section>
     <p class="vh" role="status">Loading</p>`);
 }
 const page = (title, body) => `<div class="page"><div class="pagehead"><h1>${title}</h1><span class="hint" id="count"></span></div>${body}</div>`;
@@ -192,12 +191,6 @@ async function refreshList() {
 function fillCovers() {
   const box = $("#covers");
   if (!box) return;
-  if (document.body.dataset.view === "new") {
-    box.innerHTML = LIST.slice(0, RECENT).map(cover).join("") || '<p class="hint">Your episodes will appear here.</p>';
-    $("#seeall").hidden = LIST.length <= RECENT;
-    $("#seeall").textContent = `See all ${LIST.length}`;
-    return;
-  }
   const found = filtered();
   box.innerHTML = found.slice(0, SHOWN).map(cover).join("")
     || `<p class="hint">${LIST.length ? "No episodes match these filters." : "Your episodes will appear here."}</p>`;
@@ -206,7 +199,6 @@ function fillCovers() {
 }
 
 // ---------------------------------------------------------------- home: new episode and your episodes
-const RECENT = 8; // covers on the New tab; the Episodes tab has the rest
 const langChips = (sel) => `<div class="langs" role="radiogroup" aria-label="Language">${CFG.languages.map((l) =>
   `<label><input type="radio" name="lang" value="${l.code}" ${l.code === sel ? "checked" : ""}>
     <span lang="${l.code}">${NATIVE[l.code] || l.name}<small>${l.name}</small></span></label>`).join("")}</div>`;
@@ -241,9 +233,7 @@ function renderHome() {
       </div>
       <p class="hint">Making the whole episode runs planning, research and writing in one go, which takes about five to eight minutes.
         Planning first lets you change the cast and outline before research starts.</p>
-    </div></form>
-    <section class="shelf" aria-label="Your episodes"><div class="shelfhead"><h2>Your episodes</h2>
-      <a href="#/episodes" id="seeall" hidden>See all</a></div><div class="covers" id="covers">${coverSkeleton()}</div></section>`);
+    </div></form>`);
 }
 
 // ---------------------------------------------------------------- Episodes tab

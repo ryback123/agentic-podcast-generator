@@ -62,9 +62,10 @@ python -m uvicorn podcast_agent.web.app:app --host 127.0.0.1 --port 8842
 
 Open http://127.0.0.1:8842. It has four tabs:
 
-- **New:** the new-episode form and your latest episodes; the ones being made show as in progress.
-- **Episodes:** every episode, with search and filters for language and state. An episode's page has Duplicate (the
-  same request, planned afresh) and Delete, which moves its folder to `.trash/` in the episodes folder.
+- **New:** the new-episode form.
+- **Episodes:** every episode, with search and filters for language and state; a count on the tab shows how many
+  are being made. An episode's page has Duplicate (the same request, planned afresh) and Delete, which moves its folder
+  to `.trash/` in the episodes folder.
 - **Voices:** a sample of each TTS voice, and the default voice for female and male speakers.
 - **Settings:** defaults for new episodes, the research step budget, review rounds per segment, web search on or off,
   light or dark, and whether the model, web search and TTS are working. Saved in `settings.json` in the episodes
