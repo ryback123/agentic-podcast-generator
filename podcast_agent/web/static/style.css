@@ -44,21 +44,24 @@ a { color: inherit; }
 :focus-visible { outline: 2px solid var(--onair); outline-offset: 2px; }
 button, input, select, textarea { font: inherit; color: inherit; }
 
-/* ---------- top bar: brand, tabs, what's in progress */
+/* ---------- brand, and the bottom tab bar, like an app's */
 .brand { display: flex; align-items: center; gap: 10px; font-size: 21px; font-weight: 800; font-stretch: 125%;
          text-decoration: none; letter-spacing: -.01em; padding: 0 6px; }
 .dot { width: 10px; height: 10px; border-radius: 50%; background: var(--lamp); display: inline-block; flex-shrink: 0; }
-.topbar { background: var(--sheet); border-bottom: 1px solid var(--line); }
-.topbar > div { max-width: 1344px; margin: 0 auto; padding: 8px 32px; min-height: 44px; display: flex; flex-wrap: wrap;
-                align-items: center; gap: 4px 28px; }
-.topbar .brand { padding: 0; white-space: nowrap; }
-.tabs { display: flex; gap: 2px; flex: 1; }
-.tabs a { display: inline-flex; align-items: center; min-height: 48px; padding: 0 12px; text-decoration: none; font-weight: 650;
-          color: var(--muted); }
+:root { --navh: 68px; }
+body { padding-bottom: calc(var(--navh) + env(safe-area-inset-bottom)); }
+.tabs { position: fixed; left: 0; right: 0; bottom: 0; z-index: 4; display: grid; grid-template-columns: repeat(4, minmax(0, 120px));
+        justify-content: center; gap: 4px; padding: 6px 8px calc(6px + env(safe-area-inset-bottom)); background: var(--sheet);
+        border-top: 1px solid var(--line); }
+.tabs a { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 3px; min-height: 56px;
+          text-decoration: none; color: var(--muted); font-size: 13px; font-weight: 650; }
+.tabs .ic { position: relative; display: grid; place-items: center; width: 60px; height: 30px; border-radius: 15px; }
+.tabs svg { width: 22px; height: 22px; fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
 .tabs a:hover { color: var(--ink); }
-.tabs a[aria-current="page"] { color: var(--ink); box-shadow: inset 0 -3px 0 var(--ink); }
-.onair { display: inline-flex; align-items: center; gap: 10px; padding: 7px 14px 7px 12px; border: 2px solid var(--onair);
-         border-radius: 6px; color: var(--onair); font-weight: 700; font-size: 15px; text-decoration: none; white-space: nowrap; }
+.tabs a[aria-current="page"] { color: var(--ink); font-weight: 750; }
+.tabs a[aria-current="page"] .ic { background: color-mix(in srgb, var(--ink) 12%, var(--sheet)); }
+.badge { position: absolute; top: -4px; right: 8px; min-width: 18px; height: 18px; padding: 0 5px; border-radius: 9px;
+         background: var(--go); color: #FFFFFF; font: 700 11px/18px var(--ui); text-align: center; animation: glow 1.6s ease-in-out infinite; }
 
 /* ---------- buttons + fields */
 .btn { display: inline-flex; align-items: center; gap: 6px; border: 1.5px solid var(--line); background: var(--sheet);
@@ -111,7 +114,7 @@ h3 { font-size: 17px; font-weight: 700; margin: 0; }
 .lamp.err { border-color: var(--onair); }
 .lamp.err i { background: var(--onair); }
 @keyframes glow { 50% { box-shadow: 0 0 0 7px rgba(232,59,128,.1), 0 0 26px 6px rgba(232,59,128,.32); } }
-@media (prefers-reduced-motion: reduce) { .lamp.on i, .dot.on { animation: none; } }
+@media (prefers-reduced-motion: reduce) { .lamp.on i, .dot.on, .badge { animation: none; } }
 
 /* steps: a bar on top of each, indigo once done, pink while the agents work on it */
 .steps { display: grid; grid-template-columns: repeat(4, minmax(120px, 1fr)); gap: 8px; margin-bottom: 22px; overflow-x: auto; }
@@ -135,7 +138,7 @@ h3 { font-size: 17px; font-weight: 700; margin: 0; }
 .hint { color: var(--muted); font-size: 13px; margin: 0; }
 
 /* activity (cue sheet) */
-.cue { position: sticky; top: 20px; max-height: calc(100vh - 40px); overflow-y: auto; border-left: 1px solid var(--line);
+.cue { position: sticky; top: 20px; max-height: calc(100vh - 40px - var(--navh)); overflow-y: auto; border-left: 1px solid var(--line);
        padding-left: 18px; font-size: 13px; }
 .cue h2 { font-size: 17px; }
 .cue ol { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 9px; }
@@ -147,6 +150,7 @@ h3 { font-size: 17px; font-weight: 700; margin: 0; }
 /* ---------- New tab: the new-episode form and your latest episodes, full width */
 .new { max-width: 900px; margin: 0 auto; padding: 56px 32px 24px; }
 .new h1 { font-size: clamp(34px, 4.2vw, 54px); line-height: 1.04; margin-bottom: 22px; }
+.new .brand { padding: 0; margin: 0 0 26px; }
 .composer { background: var(--sheet); border-radius: 10px; padding: 8px 26px 26px; display: flex; flex-direction: column;
             gap: 20px; }
 .topic { font: 500 25px/1.35 var(--ui); border: 0; background: transparent; padding: 16px 0 8px; width: 100%; resize: none; }
@@ -170,7 +174,8 @@ h3 { font-size: 17px; font-weight: 700; margin: 0; }
                  font-weight: 800; appearance: textfield; -moz-appearance: textfield; }
 .stepper input::-webkit-inner-spin-button, .stepper input::-webkit-outer-spin-button { -webkit-appearance: none; margin: 0; }
 .stepper .unit { font-size: 17px; font-weight: 650; margin-right: 6px; }
-.seg { display: inline-flex; max-width: 100%; border: 1.5px solid var(--ink); border-radius: 6px; overflow-x: auto;
+/* never stretched to the width of the hint under it, which changes with the choice */
+.seg { display: inline-flex; align-self: flex-start; max-width: 100%; border: 1.5px solid var(--ink); border-radius: 6px; overflow-x: auto;
        background: var(--sheet); }
 .seg label { position: relative; }
 .seg input { position: absolute; opacity: 0; }
@@ -321,7 +326,7 @@ details.trace summary { cursor: pointer; font-weight: 600; }
 .sk-ln[data-mode=backchannel] .tx { font-size: 14px; }
 .vh { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
 
-#toast { position: fixed; bottom: 18px; left: 50%; transform: translateX(-50%); background: var(--ink); color: var(--sheet);
+#toast { position: fixed; bottom: calc(var(--navh) + 14px + env(safe-area-inset-bottom)); left: 50%; transform: translateX(-50%); background: var(--ink); color: var(--sheet);
          padding: 10px 16px; border-radius: 8px; font-size: 14px; max-width: min(560px, 90vw); display: none; z-index: 5; }
 #toast.show { display: block; }
 #toast.bad { background: var(--go); color: #fff; }
@@ -332,8 +337,7 @@ details.trace summary { cursor: pointer; font-weight: 600; }
 }
 @media (max-width: 760px) {
   main { padding: 20px 16px 48px; }
-  .tabs { order: 3; flex-basis: 100%; overflow-x: auto; }
-  .topbar > div, .new, .shelf { padding-left: 16px; padding-right: 16px; }
+  .new, .shelf { padding-left: 16px; padding-right: 16px; }
   .new { padding-top: 28px; }
   .composer { padding: 4px 16px 18px; }
   .covers { grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 20px 14px; }
@@ -354,14 +358,23 @@ details.trace summary { cursor: pointer; font-weight: 600; }
 /* ---------- Episodes, Voices and Settings tabs */
 .pagehead { display: flex; flex-wrap: wrap; align-items: baseline; gap: 6px 16px; margin-bottom: 18px; }
 .filters { display: flex; flex-wrap: wrap; align-items: center; gap: 10px; margin-bottom: 24px; }
-.filters input[type=search] { flex: 1 1 260px; width: auto; min-height: 44px; }
-.filters select { width: auto; min-height: 44px; }
+.search { position: relative; flex: 1 1 280px; display: flex; }
+.search svg { position: absolute; left: 14px; top: 50%; width: 19px; height: 19px; transform: translateY(-50%); fill: none;
+              stroke: var(--muted); stroke-width: 2; stroke-linecap: round; pointer-events: none; }
+.search input { width: 100%; min-height: 48px; padding: 0 14px 0 44px; border: 1.5px solid var(--line); border-radius: 10px;
+                background: var(--sheet); font-size: 16px; }
+.search input::placeholder { color: var(--muted); }
+.filters select { width: auto; min-height: 48px; padding: 0 12px; border: 1.5px solid var(--line); border-radius: 10px; font-size: 15px; }
+.search input:focus, .filters select:focus { outline: none; border-color: var(--ink);
+                                             box-shadow: 0 0 0 3px color-mix(in srgb, var(--ink) 16%, transparent); }
+.filters .seg { min-height: 48px; border-radius: 10px; }
+.filters .seg label { display: flex; }
+.filters .seg span { display: flex; align-items: center; padding: 0 16px; }
 .morebar { justify-content: center; margin-top: 24px; }
 .lede { max-width: 70ch; margin-bottom: 16px; }
 .panel { background: var(--sheet); border-radius: 10px; padding: 18px 22px 20px; margin: 0 0 16px; max-width: 920px;
          display: flex; flex-direction: column; gap: 14px; }
 .panel h2 { margin: 0; }
-.panel > .seg { align-self: flex-start; }
 .panel .hint { max-width: 72ch; }
 .settings > .bar { max-width: 920px; margin-bottom: 28px; }
 .check { display: flex; align-items: flex-start; gap: 10px; font-weight: 600; max-width: 72ch; }

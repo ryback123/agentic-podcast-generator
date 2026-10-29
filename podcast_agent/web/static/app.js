@@ -100,7 +100,7 @@ function episodeSkeleton(tab) {
 }
 const coverSkeleton = () => times(4, () => `<span class="cover-link" aria-hidden="true">${sk(100, "cover-sk")}${sk(55)}</span>`);
 function homeSkeleton() {
-  paint(`<div class="new" aria-hidden="true"><h1>What should the episode be about?</h1>
+  paint(`<div class="new" aria-hidden="true"><p class="brand"><i class="dot"></i>Podcast Studio</p><h1>What should the episode be about?</h1>
     <div class="composer"><span class="sk-topic">${sk(45, "h1")}</span>
       <div class="f desc"><span>Who is it for, and how should it feel? (optional)</span>${sk(55)}</div>
       <div class="f"><span>Language</span><div class="langs">${times(12, (i) =>
@@ -183,8 +183,8 @@ async function refreshList() {
   clearTimeout(listTimer);
   LIST = await api("GET", "/api/episodes").catch(() => LIST);
   const live = LIST.filter((e) => e.running);
-  $("#onair").innerHTML = live.length ? `<a class="onair" href="#/ep/${live[0].id}/${tabOf(live[0])}"><i class="dot on"></i>
-    ${live.length} ${live.length > 1 ? "episodes" : "episode"} in progress</a>` : "";
+  $("#busy").innerHTML = live.length // a count on the Episodes tab, like an app's
+    ? `<b class="badge" aria-hidden="true">${live.length}</b><span class="vh">, ${live.length} in progress</span>` : "";
   fillCovers();
   syncShimmer();
   if (live.length) listTimer = setTimeout(refreshList, 3000); // keep the in-progress states current
@@ -223,6 +223,7 @@ const stepper = (name, label, min, max, value, unit, less, more) => `<div class=
 function renderHome() {
   const s = SETTINGS;
   paint(`<form class="new" id="newform">
+    <p class="brand"><i class="dot"></i>Podcast Studio</p>
     <h1>What should the episode be about?</h1>
     <div class="composer">
       <textarea class="topic" name="topic" rows="2" required aria-label="Topic" placeholder="How UPI payments work"></textarea>
@@ -259,7 +260,9 @@ function filtered() {
 }
 function renderEpisodes() {
   paint(page("Episodes", `<div class="filters">
-      <input type="search" id="find-q" placeholder="Search titles and topics" aria-label="Search episodes" value="${esc(FIND.q)}">
+      <label class="search"><span class="vh">Search episodes</span>
+        <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="11" cy="11" r="6.5"/><path d="M16 16l4.5 4.5"/></svg>
+        <input type="search" id="find-q" placeholder="Search titles and topics" value="${esc(FIND.q)}"></label>
       <select id="find-lang" aria-label="Language"><option value="">All languages</option>${CFG.languages.map((l) =>
         `<option value="${l.code}" ${l.code === FIND.lang ? "selected" : ""}>${NATIVE[l.code] || l.name} (${l.name})</option>`).join("")}</select>
       <div class="seg" role="radiogroup" aria-label="State">${STATES.map(([v, l]) =>
