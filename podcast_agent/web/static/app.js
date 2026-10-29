@@ -99,16 +99,16 @@ function episodeSkeleton(tab) {
     <p class="vh" role="status">Loading the episode</p>`);
 }
 const coverSkeleton = () => times(4, () => `<span class="cover-link" aria-hidden="true">${sk(100, "cover-sk")}${sk(55)}</span>`);
-function homeSkeleton() {
-  paint(`<div class="new" aria-hidden="true"><p class="brand"><i class="dot"></i>Podcast Studio</p><h1>What should the episode be about?</h1>
-    <div class="composer"><span class="sk-topic">${sk(45, "h1")}</span>
-      <div class="f desc"><span>Who is it for, and how should it feel? (optional)</span>${sk(55)}</div>
-      <div class="f"><span>Language</span><div class="langs">${times(12, (i) =>
+function homeSkeleton() { // shaped like renderHome
+  paint(page("New episode", `<div class="settings" aria-hidden="true">
+    <section class="panel">${["What should the episode be about?", "Who is it for, and how should it feel? (optional)"].map((l, i) =>
+      `<div class="f"><span>${l}</span>${field(2, i)}</div>`).join("")}</section>
+    <section class="panel"><div class="f"><span>Language</span><div class="langs">${times(12, (i) =>
         `<span>${sk(`${20 + W[i % 10] / 3}px`)}${sk("34px")}</span>`)}</div></div>
       <div class="row">${["Speakers", "Length"].map((l) => `<div class="f"><span>${l}</span>${sk("150px", "btn")}</div>`).join("")}
-        <div class="f"><span>English mixing</span>${sk("240px", "btn")}</div></div>
-      <div class="bar">${sk("240px", "btn")}${sk("220px", "btn")}</div></div></div>
-    <p class="vh" role="status">Loading</p>`);
+        <div class="f"><span>English mixing</span>${sk("215px", "btn")}</div></div></section>
+    <div class="bar">${sk("220px", "btn")}${sk("200px", "btn")}</div></div>
+    <p class="vh" role="status">Loading</p>`));
 }
 const page = (title, body) => `<div class="page"><div class="pagehead"><h1>${title}</h1><span class="hint" id="count"></span></div>${body}</div>`;
 const pageSkeleton = (v) => (v === "episodes"
@@ -212,28 +212,30 @@ const stepper = (name, label, min, max, value, unit, less, more) => `<div class=
     ${unit ? `<span class="unit">${unit}</span>` : ""}
     <button class="btn" type="button" data-act="step" data-name="${name}" data-d="1" aria-label="${more}">+</button></div></div>`;
 
-function renderHome() {
+function renderHome() { // laid out like Settings: a title, then panels, then the actions
   const s = SETTINGS;
-  paint(`<form class="new" id="newform">
-    <p class="brand"><i class="dot"></i>Podcast Studio</p>
-    <h1>What should the episode be about?</h1>
-    <div class="composer">
-      <textarea class="topic" name="topic" rows="2" required aria-label="Topic" placeholder="How UPI payments work"></textarea>
-      <label class="f desc"><span>Who is it for, and how should it feel? (optional)</span>
-        <textarea name="description" rows="1" placeholder="Class 8 students; friendly, with everyday examples"></textarea></label>
+  paint(page("New episode", `<form id="newform" class="settings">
+    <section class="panel">
+      <label class="f"><span>What should the episode be about?</span>
+        <textarea class="topic" name="topic" rows="2" required placeholder="How UPI payments work"></textarea></label>
+      <label class="f"><span>Who is it for, and how should it feel? (optional)</span>
+        <textarea name="description" rows="2" placeholder="Class 8 students; friendly, with everyday examples"></textarea></label>
+    </section>
+    <section class="panel">
       <div class="f"><span>Language</span>${langChips(s.lang)}</div>
       <div class="row">
         ${stepper("speakers", "Speakers", 2, 5, s.speakers, "", "Fewer speakers", "More speakers")}
         ${stepper("minutes", "Length", 5, 20, s.minutes, "min", "Shorter", "Longer")}
         ${mixBox(s.code_mix, s.lang)}
       </div>
-      <div class="bar">
-        <button class="btn btn-primary" type="submit" value="auto">Make the whole episode</button>
-        <button class="btn btn-line" type="submit" value="plan">Plan first, then decide</button>
-      </div>
-      <p class="hint">Making the whole episode runs planning, research and writing in one go, which takes about five to eight minutes.
-        Planning first lets you change the cast and outline before research starts.</p>
-    </div></form>`);
+    </section>
+    <div class="bar">
+      <button class="btn btn-primary" type="submit" value="auto">Make the whole episode</button>
+      <button class="btn btn-line" type="submit" value="plan">Plan first, then decide</button>
+    </div>
+    <p class="hint">Making the whole episode runs planning, research and writing in one go, which takes about five to eight minutes.
+      Planning first lets you change the cast and outline before research starts.</p>
+  </form>`));
 }
 
 // ---------------------------------------------------------------- Episodes tab
