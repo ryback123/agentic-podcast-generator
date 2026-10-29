@@ -133,7 +133,9 @@ podcast_agent/
 └── web/
     ├── app.py         API routes
     ├── jobs.py        background jobs, one per episode at a time
+    ├── settings.py    the Settings tab's values, saved as settings.json in the episodes folder
     └── static/        the browser UI (plain JS, no build step)
+        └── assets/    the logo: logo.svg is the source; icon-32.png and icon-180.png are exported from it
 tests/                 python -m pytest
 dev/tts_standin.py     local OpenAI-style TTS server, used for development before the course TTS API
 ```

@@ -111,7 +111,7 @@ function homeSkeleton() { // shaped like renderHome
     <p class="vh" role="status">Loading</p>`, LOCKUP));
 }
 const page = (title, body, aside = "") => `<div class="page"><div class="pagehead"><h1>${title}</h1><span class="hint" id="count"></span>${aside}</div>${body}</div>`;
-const LOCKUP = '<p class="lockup"><img src="logo.svg" alt="Podcast Studio" width="36" height="36"><span aria-hidden="true">Podcast Studio</span></p>'; // the logo, on the New tab's title row
+const LOCKUP = '<p class="lockup"><img src="assets/logo.svg" alt="Podcast Studio" width="36" height="36"><span aria-hidden="true">Podcast Studio</span></p>'; // the logo, on the New tab's title row
 const pageSkeleton = (v) => (v === "episodes"
   ? `<div class="filters" aria-hidden="true">${sk("320px", "btn")}${sk("190px", "btn")}${sk("470px", "btn")}</div><div class="covers">${coverSkeleton()}</div>`
   : times(2, (i) => `<section class="panel" aria-hidden="true">${sk(28)}${para(3, i)}</section>`)) + '<p class="vh" role="status">Loading</p>';
