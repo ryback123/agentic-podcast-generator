@@ -145,18 +145,56 @@ async function route() {
   clearTimeout(timer);
   clearTimeout(listTimer);
   if (dirty.size && EP) await saveDirty();
-  const v = viewOf(view, id);
-  setView(v);
-  window.scrollTo(0, 0); // a new page starts at its top, not where the last one was scrolled to
-  if (v === "ep") {
-    TAB = STEPS.some(([k]) => k === tab) ? tab : "plan";
-    if (!EP || EP.id !== id) { dirty.clear(); samples = {}; wasRunning = false; episodeSkeleton(TAB); }
-    await load(id);
-  } else {
-    EP = null;
-    PAGES[v]();
-  }
+  const v = viewOf(view, id), kind = navKind(document.body.dataset.view, v), leaving = EP?.id;
+  let loading;
+  await swap(kind, () => { // paints the next page (or its placeholder) at once; an episode's data follows
+    setView(v);
+    window.scrollTo(0, 0); // a new page starts at its top, not where the last one was scrolled to
+    if (v === "ep") {
+      TAB = STEPS.some(([k]) => k === tab) ? tab : "plan";
+      if (!EP || EP.id !== id) { dirty.clear(); samples = {}; wasRunning = false; episodeSkeleton(TAB); }
+      loading = load(id);
+    } else {
+      EP = null;
+      PAGES[v]();
+    }
+  }, leaving);
+  await loading;
   refreshList();
+}
+
+// ---------------------------------------------------------------- page transitions
+// Tabs slide like an Android pager (a tab further right comes in from the right); a cover grows into its episode,
+// and the episode shrinks back into its cover. Uses the browser's View Transitions; without them, or with reduced
+// motion, pages just switch.
+const TAB_ORDER = ["new", "episodes", "voices", "settings"];
+const tabIndex = (v) => TAB_ORDER.indexOf(v === "ep" ? "episodes" : v);
+let OPENING = null; // the cover just clicked
+function navKind(from, to) {
+  if (!from || !document.startViewTransition || matchMedia("(prefers-reduced-motion: reduce)").matches) return null;
+  if (to === "ep") return OPENING?.isConnected ? "open" : null;
+  if (from === "ep" && to === "episodes") return "close";
+  const d = tabIndex(to) - tabIndex(from);
+  return d > 0 ? "forward" : d < 0 ? "back" : null;
+}
+async function swap(kind, update, leaving) {
+  const cover = OPENING, main = $("#main"), root = document.documentElement;
+  const name = (el, n) => { if (el) el.style.viewTransitionName = n; };
+  OPENING = null;
+  if (!kind) return update();
+  root.dataset.nav = kind;
+  if (kind === "open") name(cover, "ep");
+  else name(main, kind === "close" ? "ep" : "page");
+  const t = document.startViewTransition(() => {
+    update();
+    if (kind === "open") name(main, "ep");
+    if (kind === "close") { name(main, ""); name($(`.cover-link[href^="#/ep/${leaving}/"] .cover`), "ep"); }
+  });
+  // wait for the whole animation: refreshing the list meanwhile would redraw the covers and lose the named one
+  await t.finished;
+  delete root.dataset.nav;
+  name(main, "");
+  for (const el of $$(".cover")) name(el, "");
 }
 
 async function load(id) {
@@ -774,6 +812,8 @@ const ACTIONS = {
 
 // ---------------------------------------------------------------- events
 document.addEventListener("click", (e) => {
+  const c = e.target.closest(".cover-link");
+  if (c && e.button === 0 && !(e.metaKey || e.ctrlKey || e.shiftKey)) OPENING = $(".cover", c); // it grows into the episode
   const b = e.target.closest("[data-act]");
   if (!b || b.disabled) return;
   e.preventDefault();

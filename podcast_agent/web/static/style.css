@@ -387,3 +387,27 @@ details.trace summary { cursor: pointer; font-weight: 600; }
   .status { grid-template-columns: 1fr; gap: 2px; }
   .status dd { margin-bottom: 10px; }
 }
+
+/* ---------- page transitions (see swap() in app.js) */
+::view-transition-group(page) { animation: none; }
+::view-transition-old(page), ::view-transition-new(page) { mix-blend-mode: normal; }
+:root[data-nav="forward"]::view-transition-old(page) { animation: page-out-left .34s cubic-bezier(.3, 0, .2, 1) both; }
+:root[data-nav="forward"]::view-transition-new(page) { animation: page-in-right .34s cubic-bezier(.3, 0, .2, 1) both; }
+:root[data-nav="back"]::view-transition-old(page) { animation: page-out-right .34s cubic-bezier(.3, 0, .2, 1) both; }
+:root[data-nav="back"]::view-transition-new(page) { animation: page-in-left .34s cubic-bezier(.3, 0, .2, 1) both; }
+@keyframes page-out-left { to { transform: translateX(-100vw); } }
+@keyframes page-in-right { from { transform: translateX(100vw); } }
+@keyframes page-out-right { to { transform: translateX(100vw); } }
+@keyframes page-in-left { from { transform: translateX(-100vw); } }
+.tabs { view-transition-name: tabbar; } /* drawn above a sliding page */
+.lockup { view-transition-name: brand; } /* glides when the bar's column changes width, instead of showing twice */
+/* a cover grows into its episode: a card expands while the cover fades out at once and the page fades in after it;
+   closing runs the other way, with the cover fading in once the card is nearly its size */
+::view-transition-group(ep) { animation-duration: .42s; animation-timing-function: cubic-bezier(.3, 0, .2, 1); overflow: clip;
+                              border-radius: 8px; background: var(--board); box-shadow: 0 12px 40px rgba(34, 27, 92, .18); }
+::view-transition-old(ep), ::view-transition-new(ep) { mix-blend-mode: normal; }
+::view-transition-old(ep) { animation: vt-fade-out .16s ease-out both; }
+::view-transition-new(ep) { animation: vt-fade-in .26s .14s ease-in-out both; }
+:root[data-nav="close"]::view-transition-new(ep) { animation-duration: .2s; animation-delay: .22s; }
+@keyframes vt-fade-out { to { opacity: 0; } }
+@keyframes vt-fade-in { from { opacity: 0; } }
