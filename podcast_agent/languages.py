@@ -31,8 +31,11 @@ SCRIPTS = {
 # How much English each code-mix level asks for, as the agents are told
 CODE_MIX = {
     "light": "Mostly {lang}; English only for technical terms that people normally say in English.",
-    "medium": "Natural everyday code-mixing: {lang} sentences with common English words and short phrases, "
-              "the way urban {lang} speakers talk.",
+    # The budget brought first drafts over 35% English from 49 to 31 of 120 (replay of swapfix_20261029).
+    "medium": "Everyday code-mixing: {lang} sentences with some common English words, the way {lang} speakers talk "
+              "with friends. About one word in five should be English, and never more than one in three: English for "
+              "technical terms and the odd everyday word, while verbs, explanations, analogies and whole sentences "
+              "stay in {lang}.",
     "heavy": "Heavy code-mixing: many English words and phrases inside {lang} sentences, switching freely.",
 }
 # ponytail: speaking-rate guesses; replace with characters/minute measured from the TTS API per language
