@@ -10,6 +10,8 @@
   --amber: #E3A21A;      /* meters, issues */
   --amber-ink: #6E4A00;
   --amber-wash: #FBF0D6;
+  --sk: #E2E6E0; --sk-hi: #F4F6F2;   /* loading placeholders, on a sheet */
+  --sk-b: #D3D9D0; --sk-b-hi: #E1E5DE; /* and straight on the board */
   --ch1: #1F7A8C; --ch2: #8E3B76; --ch3: #5E7A1F; --ch4: #3555C8; --ch5: #9C6B00;
   --ui: "Archivo", system-ui, sans-serif;
   --text: "Noto Sans", "Noto Sans Devanagari", "Noto Sans Bengali", "Noto Sans Tamil", "Noto Sans Telugu",
@@ -21,6 +23,7 @@
   :root {
     --board: #131A20; --sheet: #1B242C; --ink: #E4E9ED; --muted: #98A4AF; --line: #2D3944;
     --console: #0E1419; --console-ink: #C9D2D9; --amber-ink: #F2C25A; --amber-wash: #33290F;
+    --sk: #25303A; --sk-hi: #34424E; --sk-b: #222C35; --sk-b-hi: #303C47;
     --ch1: #4FB3C6; --ch2: #CD7BB4; --ch3: #9DBB55; --ch4: #7D96F0; --ch5: #D9A53B;
     color-scheme: dark;
   }
@@ -222,6 +225,35 @@ details.trace summary { cursor: pointer; font-weight: 600; }
 .play svg { width: 12px; height: 12px; fill: currentColor; }
 .play.playing { background: var(--ink); color: var(--sheet); }
 
+/* ---------- loading placeholders: bars shaped like the text they stand for. Each bar is as tall as a line of
+   that section's text, and one highlight sweeps across the whole page (fixed background), kept in step across
+   re-renders by paint() in app.js. */
+.sk { display: block; height: .72em; margin: .4em 0; margin: calc((1lh - .72em) / 2) 0; border-radius: 4px;
+      background: linear-gradient(100deg, var(--sk) 45%, var(--sk-hi) 50%, var(--sk) 55%) var(--sk) fixed;
+      background-size: 250vw 100%; animation: sk 1.6s linear infinite; }
+@keyframes sk { from { background-position: 100% 0; } to { background-position: 0 0; } }
+@media (prefers-reduced-motion: reduce) { .sk { animation: none; } }
+.head .sk, .cue .sk, .new > .f > .sk, .new .row .sk, .new > .bar .sk { --sk: var(--sk-b); --sk-hi: var(--sk-b-hi); }
+.sk.btn { height: 37px; margin: 0; border-radius: 6px; }
+.sk-topic { display: block; border-bottom: 2px solid var(--line); padding: 8px 0 34px; }
+.sk-field { display: block; border: 1px solid var(--line); border-radius: 6px; background: var(--sheet); padding: 7px 9px; }
+.sk.h1 { height: 34px; margin: 2px 0 6px; }
+.sk.chip { display: inline-block; height: .8em; margin: 0; vertical-align: middle; }
+.sk.num { height: 22px; margin: 0 0 4px; }
+.sk.dot { width: 32px; height: 32px; margin: 0; border-radius: 50%; }
+.sk.wave { height: 54px; margin: 0; border-radius: 27px; }
+.sk.bar10 { height: 10px; margin: 5px 0 6px; border-radius: 5px; }
+.sk.tint { --sk: color-mix(in srgb, var(--c) 26%, var(--sheet)); --sk-hi: color-mix(in srgb, var(--c) 40%, var(--sheet)); }
+.strip .sk.tint { height: 18px; margin: 8px 0 4px; }
+.sk-ln .who { padding-top: 4px; }
+.sk-ln .who .sk { max-width: 90px; }
+.sk-ln .tx { font: 16px/1.6 var(--text); padding: 3px 6px; min-width: 0; }
+.sk-ln[data-mode=backchannel] .tx { font-size: 14px; }
+.rail .sk { --sk: rgba(255,255,255,.07); --sk-hi: rgba(255,255,255,.15); }
+.ep-link.sk-item { pointer-events: none; }
+.ep-link.sk-item .sk { margin: 5px 0; }
+.vh { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
+
 #toast { position: fixed; bottom: 18px; left: 50%; transform: translateX(-50%); background: var(--ink); color: var(--sheet);
          padding: 10px 16px; border-radius: 8px; font-size: 14px; max-width: min(560px, 90vw); display: none; z-index: 5; }
 #toast.show { display: block; }
@@ -240,7 +272,7 @@ details.trace summary { cursor: pointer; font-weight: 600; }
   .head { flex-direction: column; }
   h1 { font-size: 32px; }
   .ln { grid-template-columns: 1fr auto; }
-  .ln textarea { grid-column: 1 / -1; grid-row: 2; }
+  .ln textarea, .sk-ln .tx { grid-column: 1 / -1; grid-row: 2; }
   .outline li { grid-template-columns: 1fr; }
   .outline li::before { grid-row: auto; }
   .outline .wide { grid-column: auto; }

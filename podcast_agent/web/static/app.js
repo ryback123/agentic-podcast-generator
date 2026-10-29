@@ -40,6 +40,83 @@ const file = (p) => `/api/episodes/${EP.id}/files/${p}`;
 const hasScript = () => !!EP.plan?.segments.some((s) => s.turns?.length);
 const empty = (msg) => `<div class="empty"><p>${esc(msg)}</p></div>`;
 function autosize(t) { t.style.height = "auto"; t.style.height = t.scrollHeight + 2 + "px"; }
+function paint(html) {
+  $("#main").innerHTML = html;
+  // every placeholder runs on the page clock, so the shimmer stays in step when the page re-renders during a job
+  for (const a of document.getAnimations()) if (a.animationName === "sk") a.startTime = 0;
+}
+
+// ---------------------------------------------------------------- loading placeholders
+// Shaped like the content they stand for, using the same layout classes. Widths come from a fixed list, so a
+// placeholder keeps its shape when the page re-renders.
+const W = [94, 81, 88, 67, 97, 74, 85, 58, 91, 70];
+const sk = (w, cls = "") => `<i class="sk ${cls}" style="width:${typeof w === "number" ? w + "%" : w}"></i>`;
+const para = (n, seed = 0) => Array.from({ length: n }, (_, j) =>
+  sk(n > 1 && j === n - 1 ? 30 + W[(seed + j) % 10] / 2 : W[(seed + j) % 10])).join("");
+const times = (n, f) => Array.from({ length: n }, (_, i) => f(i)).join("");
+const field = (lines, seed = 0) => `<span class="sk-field">${para(lines, seed)}</span>`;
+
+function planSkeleton(speakers = 2, minutes = 10) {
+  return `<section aria-hidden="true"><h2>Cast</h2><div class="strips">${times(speakers, (i) => `
+      <div class="strip" style="--c:${color(i)}">${sk(48, "tint")}${["Gender", "Role", "Knows", "Talks"].map((l, j) =>
+        `<div class="f"><span>${l}</span>${field(j > 1 ? 2 : 1, i + j)}</div>`).join("")}</div>`)}</div></section>
+    <section aria-hidden="true"><h2>Outline</h2><ol class="outline">${times(Math.max(4, Math.round(minutes / 2)), (i) => `
+      <li>${field(1, i)}${field(1, i + 3)}<span></span>
+        <div class="f wide"><span>Goal</span>${field(1, i + 1)}</div>
+        <div class="f wide"><span>Research questions, one per line</span>${field(2, i + 2)}</div></li>`)}</ol></section>`;
+}
+const factsSkeleton = (seed) => `<ul class="facts" aria-hidden="true">${times(3, (k) => `<li>${para(1 + ((seed + k) % 2), seed + k)}</li>`)}</ul>`;
+const researchSkeleton = () => `<div class="qs" aria-hidden="true">${times(4, (i) => `<div class="q"><header>${sk(W[i] * 0.6)}
+  <span class="pips">${times(3, () => "<i></i>")}</span></header>${factsSkeleton(i)}</div>`)}</div>`;
+const statsSkeleton = () => `<div class="stats" aria-hidden="true">${[["56px", "120px"], ["36px", "40px"], ["32px", "80px"]].map(([a, b]) =>
+  `<div>${sk(a, "num")}${sk(b)}</div>`).join("")}<div class="share">${sk("130px")}${sk(100, "bar10")}${sk("55%")}</div></div>`;
+// script lines: speakers take turns, and every fifth line is a short filler
+const linesSkeleton = (n, seed) => times(n, (k) => {
+  const filler = k % 5 === 3;
+  return `<div class="ln sk-ln" style="--c:${color(k % (EP?.plan?.speakers.length || 2))}" data-mode="${filler ? "backchannel" : ""}" aria-hidden="true">
+    <span class="who">${sk(filler ? 45 : 70, "tint")}</span><span class="tx">${filler ? sk(16) : para(1 + ((k + seed) % 3), k + seed)}</span><span></span></div>`;
+});
+const scriptSkeleton = () => statsSkeleton() + times(2, (i) => `<section class="sheet" aria-hidden="true">
+  <header><span class="n">${i + 1}</span>${sk("38%")}<span class="goal">${sk(70)}</span></header>
+  <div class="lines">${linesSkeleton(6, i)}</div></section>`);
+const playerSkeleton = () => `<div class="player" aria-hidden="true"><h2>Episode</h2>${sk(100, "wave")}${sk("30%")}</div>`;
+const audioSkeleton = () => playerSkeleton() + `<section aria-hidden="true"><h2>Lines</h2>${times(8, (k) =>
+  `<div class="al" style="--c:${color(k % 2)}">${sk("32px", "dot")}${sk(60, "tint")}${sk(W[k], "tx")}<span></span></div>`)}</section>`;
+
+function episodeSkeleton(tab) {
+  const body = { plan: () => planSkeleton(), research: researchSkeleton, script: scriptSkeleton, audio: audioSkeleton }[tab];
+  paint(`<div class="head" aria-hidden="true"><div style="flex:1">${sk(55, "h1")}
+      <div class="meta">${["70px", "84px", "110px", "150px"].map((w) => sk(w, "chip")).join("")}</div></div></div>
+    <nav class="steps" aria-hidden="true">${STEPS.map(([k, l], i) => `<a ${k === tab ? 'aria-current="page"' : ""}><b>${i + 1}</b>${l}</a>`).join("")}</nav>
+    <div class="work"><div class="stage">${body()}</div>
+      <aside class="cue" aria-hidden="true"><h2>Activity</h2>${times(6, (k) => para(2, k))}</aside></div>
+    <p class="vh" role="status">Loading the episode</p>`);
+}
+function newSkeleton() {
+  paint(`<div class="new" aria-hidden="true"><h1>New episode</h1>
+    <div class="f"><span>What should the episode be about?</span><span class="sk-topic">${sk(45, "h1")}</span></div>
+    <div class="f"><span>Who is it for, and how should it feel? (optional)</span>${field(2)}</div>
+    <div class="f"><span>Language</span><div class="langs">${times(12, (i) => `<span>${sk(W[i % 10] * 0.5)}${sk(40)}</span>`)}</div></div>
+    <div class="row">${["Speakers", "Length"].map((l) => `<div class="f"><span>${l}</span>${sk(100, "bar10")}</div>`).join("")}</div>
+    <div class="f"><span>English mixing</span>${sk("230px", "btn")}</div>
+    <div class="bar">${sk("190px", "btn")}${sk("170px", "btn")}</div></div>
+    <p class="vh" role="status">Loading</p>`);
+}
+
+// what the running job is working on
+const WRITES = ["making the whole episode", "running the remaining steps", "writing the script"];
+const writes = () => EP.job.running && (WRITES.includes(EP.job.task) || EP.job.task.startsWith("rewrite segment"));
+// research is on: a research job, or a whole-episode job whose latest step was the researcher's
+const researching = () => EP.job.running && (EP.job.task === "researching" || (WRITES.slice(0, 2).includes(EP.job.task) &&
+  EP.log.findLast((e) => ["producer", "researcher", "writer", "critics"].includes(e.agent))?.agent === "researcher"));
+// the segment being drafted right now: its old lines go when its first review round ends
+function drafting() {
+  if (!writes()) return -1;
+  const k = EP.log.findLastIndex((e) => e.agent === "writer" && /^writing segment \d+/.test(e.event));
+  if (k < 0) return -1;
+  const n = EP.log[k].event.match(/\d+/)[0];
+  return EP.log.slice(k + 1).some((e) => e.event.startsWith(`segment ${n} round`) && e.event.includes("word fixes")) ? -1 : n - 1;
+}
 
 // ---------------------------------------------------------------- routing
 async function route() {
@@ -48,7 +125,7 @@ async function route() {
   if (dirty.size && EP) await saveDirty();
   if (view === "ep" && id) {
     TAB = STEPS.some(([k]) => k === tab) ? tab : "plan";
-    if (!EP || EP.id !== id) { dirty.clear(); wasRunning = false; }
+    if (!EP || EP.id !== id) { dirty.clear(); wasRunning = false; episodeSkeleton(TAB); }
     await load(id);
   } else {
     EP = null;
@@ -146,7 +223,7 @@ function render() {
   const lamp = job.running ? `<div class="lamp on" role="status"><i></i>${esc(cap(job.task))}…</div>`
     : job.error ? `<div class="lamp err" role="status"><i></i>Stopped: ${esc(job.error.slice(0, 90))}</div>`
     : `<div class="lamp" role="status"><i></i>Off air</div>`;
-  $("#main").innerHTML = `
+  paint(`
     <div class="head"><div>
       <h1 class="${/[^\x00-\x7F]/.test(title) ? "native" : ""}" lang="${r.lang}">${esc(title)}</h1>
       <div class="meta"><span>${NATIVE[r.lang]}</span><span>${r.speakers} speakers</span><span>${r.minutes} minute target</span>
@@ -154,7 +231,7 @@ function render() {
     </div>${lamp}</div>
     <nav class="steps" aria-label="Steps">${STEPS.map(([k, l], i) =>
       `<a href="#/ep/${EP.id}/${k}" ${k === TAB ? 'aria-current="page"' : ""}><b>${i + 1}</b>${l}<small>${stepNote(k)}</small></a>`).join("")}</nav>
-    <div class="work"><fieldset class="stage" ${job.running ? "disabled" : ""}>${VIEWS[TAB]()}</fieldset>${cue()}</div>`;
+    <div class="work"><fieldset class="stage" ${job.running ? "disabled" : ""}>${VIEWS[TAB]()}</fieldset>${cue()}</div>`);
   $$("textarea.auto").forEach(autosize);
   const c = $(".cue");
   c.scrollTop = c.scrollHeight;
@@ -169,9 +246,9 @@ function cue() {
 
 const VIEWS = {
   plan() {
+    if (EP.job.running && (!EP.plan || EP.job.task === "planning")) return planSkeleton(EP.request.speakers, EP.request.minutes);
     if (!EP.plan) {
-      return EP.job.running ? empty("The producer is choosing the cast and outline.")
-        : `<div class="empty"><p>No plan yet.</p><button class="btn btn-primary" data-act="replan">Plan the episode</button></div>`;
+      return `<div class="empty"><p>No plan yet.</p><button class="btn btn-primary" data-act="replan">Plan the episode</button></div>`;
     }
     const p = EP.plan;
     return `<section><h2>Cast</h2>${hasScript() ? '<p class="hint">Renaming a speaker also changes their name in the script lines. Saved voices stay with them.</p>' : ""}<div class="strips">${p.speakers.map((s, i) => `
@@ -204,7 +281,8 @@ const VIEWS = {
   },
 
   research() {
-    if (!EP.plan) return empty("Plan the episode first.");
+    if (!EP.plan) return EP.job.running ? researchSkeleton() : empty("Plan the episode first.");
+    const busy = researching();
     const qs = Object.entries(EP.questions);
     const steps = EP.log.filter((e) => e.agent === "researcher");
     const pages = new Set(EP.facts.map((f) => f.url)).size;
@@ -212,11 +290,11 @@ const VIEWS = {
         <button class="btn btn-primary" data-act="research">${EP.facts.length ? "Research again" : "Run research"}</button>
         <button class="btn" data-act="writeAll">${hasScript() ? "Rewrite the whole script" : "Write the script"}</button>
         <span class="grow"></span><span class="hint">${EP.facts.length} facts from ${pages} pages${EP.research_stats ? `, ${EP.research_stats.credits} web search credits` : ""}</span></div>
-      ${qs.length ? `<div class="qs">${qs.map(([q, t]) => {
+      ${qs.length ? `<div class="qs">${qs.map(([q, t], qi) => {
         const fs = EP.facts.filter((f) => f.q === q);
         return `<div class="q"><header><h3>${esc(t)}</h3>
           <span class="pips" title="${fs.length} facts" aria-label="${fs.length} facts">${[0, 1, 2].map((k) => `<i class="${fs.length > k ? "on" : ""}"></i>`).join("")}</span></header>
-          ${fs.length ? `<ul class="facts">${fs.map((f) => `<li>${esc(f.fact)} <a href="${esc(f.url)}" target="_blank" rel="noopener">${esc(f.source)}</a></li>`).join("")}</ul>` : ""}</div>`;
+          ${fs.length ? `<ul class="facts">${fs.map((f) => `<li>${esc(f.fact)} <a href="${esc(f.url)}" target="_blank" rel="noopener">${esc(f.source)}</a></li>`).join("")}</ul>` : busy ? factsSkeleton(qi) : ""}</div>`;
       }).join("")}</div>` : '<p class="hint">This plan has no research questions, so the writer will use common knowledge only.</p>'}
       ${steps.length ? `<details class="trace" ${EP.job.running ? "open" : ""}><summary>How the research agent worked (${steps.length} steps)</summary>
         <ol>${steps.map((s) => `<li><b>${esc(s.event)}</b>${s.thought ? `<span class="th">${esc(s.thought)}</span>` : ""}
@@ -224,14 +302,14 @@ const VIEWS = {
   },
 
   script() {
-    if (!EP.plan) return empty("Plan the episode first.");
+    if (!EP.plan) return EP.job.running ? scriptSkeleton() : empty("Plan the episode first.");
     if (!hasScript() && !EP.job.running) {
       return `<div class="empty"><p>${EP.facts.length ? `Research found ${EP.facts.length} facts.` : "There is no research yet, so the writer will only use common knowledge."}
         The writer drafts each segment, then a fact-checker and an editor review it, with up to two rounds of fixes.</p>
         <button class="btn btn-primary" data-act="writeAll">Write the script</button></div>`;
     }
-    const segs = EP.plan.segments;
-    return `${hasScript() && EP.stats ? statsBar() : ""}
+    const segs = EP.plan.segments, now = drafting();
+    return `${hasScript() && EP.stats ? statsBar() : writes() ? statsSkeleton() : ""}
       <div class="bar">
         <button class="btn" data-act="writeAll">Rewrite the whole script</button>
         ${segs.some((s) => !s.turns?.length) ? '<button class="btn" data-act="writeMissing">Write missing segments</button>' : ""}
@@ -239,7 +317,7 @@ const VIEWS = {
         ${hasScript() ? `<a class="btn btn-quiet" href="/api/episodes/${EP.id}/script.txt" target="_blank">script.txt</a>
           <a class="btn btn-quiet" href="/api/episodes/${EP.id}/script.json" target="_blank">script.json</a>` : ""}
       </div>
-      ${segs.map(sheet).join("")}`;
+      ${segs.map((s, i) => sheet(s, i, writes() && (!s.turns?.length || i === now))).join("")}`;
   },
 
   audio() {
@@ -248,8 +326,8 @@ const VIEWS = {
       return empty("Audio needs a text-to-speech service. Start the server with TTS_BASE_URL and TTS_VOICES set, then reload this page.");
     }
     const voices = EP.audio?.voices || {}, V = CFG.tts.voices, ep = EP.audio?.episode;
-    const ready = EP.lines.filter((l) => l.ready).length;
-    return `${ep ? `<div class="player"><h2>Episode</h2>
+    const ready = EP.lines.filter((l) => l.ready).length, busy = EP.job.running && EP.job.task === "generating audio";
+    return `${busy && !ep ? playerSkeleton() : ""}${ep ? `<div class="player"><h2>Episode</h2>
         <audio controls preload="none" src="${file(ep.file)}?v=${ep.built}"></audio>
         <div class="bar"><span class="hint">${(ep.seconds / 60).toFixed(1)} minutes${ep.chars_per_min ? `, ${ep.chars_per_min} characters a minute` : ""}</span>
           <span class="grow"></span><a class="btn" href="${file(ep.file)}" download>Download MP3</a>
@@ -261,9 +339,9 @@ const VIEWS = {
         <div class="bar" style="margin-top:12px"><button class="btn btn-primary" data-act="genAudio">${ready ? "Update audio" : "Generate audio"}</button>
           <span class="hint">${ready} of ${EP.lines.length} lines have audio${ready && ready < EP.lines.length ? "; only new or changed lines are generated" : ""}.</span></div></section>
       <section><h2>Lines</h2>${EP.lines.map((l) => `<div class="al" style="--c:${chanOf(l.speaker)}">
-        ${l.ready ? `<button class="play" type="button" data-act="play" data-src="${file(l.file)}" aria-label="Play line">${PLAY}</button>` : "<span></span>"}
+        ${l.ready ? `<button class="play" type="button" data-act="play" data-src="${file(l.file)}" aria-label="Play line">${PLAY}</button>` : busy ? sk("32px", "dot") : "<span></span>"}
         <span class="who">${esc(l.speaker)}${l.mode ? `<small>${MODE_NOTE[l.mode]}</small>` : ""}</span><span class="tx" lang="${EP.request.lang}" title="${esc(l.text)}">${esc(l.text)}</span>
-        ${l.ready ? `<button class="btn btn-quiet" data-act="retake" data-i="${l.segment}" data-k="${l.line}">New take</button>` : '<span class="pending">no audio yet</span>'}
+        ${l.ready ? `<button class="btn btn-quiet" data-act="retake" data-i="${l.segment}" data-k="${l.line}">New take</button>` : busy ? sk("84px") : '<span class="pending">no audio yet</span>'}
       </div>`).join("")}</section>`;
   },
 };
@@ -295,14 +373,15 @@ function lineRow(sp, tx, mode = "") {
       <button class="btn btn-quiet" type="button" data-act="delLine" aria-label="Delete this line">×</button></span></div>`;
 }
 
-function sheet(s, i) {
-  const lines = s.turns || [];
+function sheet(s, i, wait = false) { // wait: the lines are being written, show placeholders
+  const lines = wait ? [] : s.turns || [];
   return `<section class="sheet" data-seg="${i}">
     <header><span class="n">${i + 1}</span><h3>${esc(s.title)}</h3>
       <span class="hint">${s.minutes} min${lines.length ? `, ${lines.length} lines` : ""}</span>
       <span class="goal">${esc(s.goal || "")}</span></header>
-    ${s.open_issues?.length ? `<ul class="issues">${s.open_issues.map((x) => `<li>${esc(x)}</li>`).join("")}</ul>` : ""}
-    <div class="lines">${lines.map(([sp, tx, mode]) => lineRow(sp, tx, mode)).join("") || '<p class="hint">Not written yet.</p>'}</div>
+    ${s.open_issues?.length && !wait ? `<ul class="issues">${s.open_issues.map((x) => `<li>${esc(x)}</li>`).join("")}</ul>` : ""}
+    <div class="lines">${wait ? linesSkeleton(Math.min(8, Math.max(4, Math.round(s.minutes * 3))), i)
+      : lines.map(([sp, tx, mode]) => lineRow(sp, tx, mode)).join("") || '<p class="hint">Not written yet.</p>'}</div>
     <footer>
       <button class="btn btn-primary" data-act="saveSeg" data-i="${i}" ${dirty.has(i) ? "" : "disabled"}>Save edits</button>
       <button class="btn" type="button" data-act="addLine" data-i="${i}">Add line</button>
@@ -326,7 +405,7 @@ function collectPlan() {
   });
   return p;
 }
-const collectSeg = (i) => $$(`.sheet[data-seg="${i}"] .ln`).map((ln) => [$(".sp", ln).value, $("textarea", ln).value, $(".md", ln).value]);
+const collectSeg = (i) => $$(`.sheet[data-seg="${i}"] .ln:not(.sk-ln)`).map((ln) => [$(".sp", ln).value, $("textarea", ln).value, $(".md", ln).value]);
 function markDirty(i) {
   dirty.add(i);
   const b = $(`.sheet[data-seg="${i}"] [data-act=saveSeg]`);
@@ -462,6 +541,9 @@ window.addEventListener("hashchange", route);
 window.addEventListener("beforeunload", (e) => { if (dirty.size) e.preventDefault(); });
 
 (async () => {
+  const [, view, , tab] = location.hash.split("/");
+  if (view === "ep") episodeSkeleton(STEPS.some(([k]) => k === tab) ? tab : "plan");
+  else newSkeleton();
   CFG = await api("GET", "/api/config");
   if (!location.hash || location.hash === "#") location.hash = "#/new";
   else route();
