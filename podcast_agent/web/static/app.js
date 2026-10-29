@@ -11,8 +11,9 @@ const AGENT = { producer: "Producer", researcher: "Researcher", writer: "Writer"
   audio: "Audio", done: "Script", error: "Error" };
 const STEPS = [["plan", "Plan"], ["research", "Research"], ["script", "Script"], ["audio", "Audio"]];
 const PLAY = '<svg viewBox="0 0 12 12" aria-hidden="true"><path d="M2 1l9 5-9 5z"/></svg>';
+const CHECK = '<svg viewBox="0 0 16 16" aria-hidden="true"><path d="M3 8.5l3.2 3L13 4.5"/></svg>';
 
-let CFG = null, EP = null, TAB = "plan", timer = null, wasRunning = false;
+let CFG = null, EP = null, TAB = "plan", timer = null, listTimer = null, wasRunning = false;
 const dirty = new Set(); // segment indexes with unsaved script edits
 let samples = {}; // speaker index -> sample lines written from their persona
 const player = new Audio();
@@ -46,7 +47,7 @@ function paint(html) {
   syncShimmer();
 }
 // every placeholder runs on the page clock, so the shimmer stays in step when the page re-renders during a job
-function syncShimmer() { for (const a of document.getAnimations()) if (a.animationName === "sk") a.startTime = 0; }
+function syncShimmer() { for (const a of document.getAnimations()) if (["sk", "glow"].includes(a.animationName)) a.startTime = 0; }
 
 // ---------------------------------------------------------------- loading placeholders
 // Shaped like the content they stand for, using the same layout classes. Widths come from a fixed list, so a
@@ -89,19 +90,23 @@ function episodeSkeleton(tab) {
   const body = { plan: () => planSkeleton(), research: researchSkeleton, script: scriptSkeleton, audio: audioSkeleton }[tab];
   paint(`<div class="head" aria-hidden="true"><div style="flex:1">${sk(55, "h1")}
       <div class="meta">${["70px", "84px", "110px", "150px"].map((w) => sk(w, "chip")).join("")}</div></div></div>
-    <nav class="steps" aria-hidden="true">${STEPS.map(([k, l], i) => `<a ${k === tab ? 'aria-current="page"' : ""}><b>${i + 1}</b>${l}</a>`).join("")}</nav>
+    <nav class="steps" aria-hidden="true">${STEPS.map(([k, l], i) =>
+      `<a ${k === tab ? 'aria-current="page"' : ""}><span class="l"><b>${i + 1}</b>${l}</span><small>&nbsp;</small></a>`).join("")}</nav>
     <div class="work"><div class="stage">${body()}</div>
       <aside class="cue" aria-hidden="true"><h2>Activity</h2>${times(6, (k) => para(2, k))}</aside></div>
     <p class="vh" role="status">Loading the episode</p>`);
 }
-function newSkeleton() {
-  paint(`<div class="new" aria-hidden="true"><h1>New episode</h1>
-    <div class="f"><span>What should the episode be about?</span><span class="sk-topic">${sk(45, "h1")}</span></div>
-    <div class="f"><span>Who is it for, and how should it feel? (optional)</span>${field(2)}</div>
-    <div class="f"><span>Language</span><div class="langs">${times(12, (i) => `<span>${sk(W[i % 10] * 0.5)}${sk(40)}</span>`)}</div></div>
-    <div class="row">${["Speakers", "Length"].map((l) => `<div class="f"><span>${l}</span>${sk(100, "bar10")}</div>`).join("")}</div>
-    <div class="f"><span>English mixing</span>${sk("230px", "btn")}</div>
-    <div class="bar">${sk("190px", "btn")}${sk("170px", "btn")}</div></div>
+const coverSkeleton = () => times(4, () => `<span class="cover-link" aria-hidden="true">${sk(100, "cover-sk")}${sk(55)}</span>`);
+function homeSkeleton() {
+  paint(`${topbar()}<div class="new" aria-hidden="true"><h1>What should the episode be about?</h1>
+    <div class="composer"><span class="sk-topic">${sk(45, "h1")}</span>
+      <div class="f desc"><span>Who is it for, and how should it feel? (optional)</span>${sk(55)}</div>
+      <div class="f"><span>Language</span><div class="langs">${times(12, (i) =>
+        `<span>${sk(`${20 + W[i % 10] / 3}px`)}${sk("34px")}</span>`)}</div></div>
+      <div class="row">${["Speakers", "Length"].map((l) => `<div class="f"><span>${l}</span>${sk("150px", "btn")}</div>`).join("")}
+        <div class="f"><span>English mixing</span>${sk("240px", "btn")}</div></div>
+      <div class="bar">${sk("240px", "btn")}${sk("220px", "btn")}</div></div></div>
+    <section class="shelf" aria-hidden="true"><h2>Your episodes</h2><div class="covers">${coverSkeleton()}</div></section>
     <p class="vh" role="status">Loading</p>`);
 }
 
@@ -124,14 +129,16 @@ function drafting() {
 async function route() {
   const [, view, id, tab] = location.hash.split("/");
   clearTimeout(timer);
+  clearTimeout(listTimer);
   if (dirty.size && EP) await saveDirty();
+  document.body.classList.toggle("home", !(view === "ep" && id));
   if (view === "ep" && id) {
     TAB = STEPS.some(([k]) => k === tab) ? tab : "plan";
     if (!EP || EP.id !== id) { dirty.clear(); samples = {}; wasRunning = false; episodeSkeleton(TAB); }
     await load(id);
   } else {
     EP = null;
-    renderNew();
+    renderHome();
   }
   renderList();
 }
@@ -155,50 +162,91 @@ async function load(id) {
   if (running) timer = setTimeout(() => load(id), 1500);
 }
 
+const tabOf = (e) => (e.has_audio ? "audio" : e.has_script ? "script" : "plan");
 async function renderList() {
+  clearTimeout(listTimer);
   const list = await api("GET", "/api/episodes").catch(() => []);
   $("#episodes").innerHTML = list.length
     ? list.map((e) => {
         const state = e.running ? '<span class="live">on air</span>' : e.has_audio ? "audio ready" : e.has_script ? "script ready" : "planned";
-        const tab = e.has_audio ? "audio" : e.has_script ? "script" : "plan";
-        return `<a class="ep-link" href="#/ep/${e.id}/${tab}" ${e.id === EP?.id ? 'aria-current="page"' : ""}>
+        return `<a class="ep-link" href="#/ep/${e.id}/${tabOf(e)}" ${e.id === EP?.id ? 'aria-current="page"' : ""}>
           <span class="t" lang="${e.lang}">${esc(e.title)}</span><span class="s">${NATIVE[e.lang] || e.lang}, ${state}</span></a>`;
       }).join("")
     : '<p class="ep-link s">Your episodes will appear here.</p>';
+  const covers = $("#covers"), pill = $("#onair"), live = list.filter((e) => e.running);
+  if (!covers) return;
+  covers.innerHTML = list.map(cover).join("") || '<p class="hint">Your episodes will appear here.</p>';
+  pill.innerHTML = live.length ? `<a class="onair" href="#/ep/${live[0].id}/${tabOf(live[0])}"><i class="dot on"></i>
+    ${live.length} ${live.length > 1 ? "episodes" : "episode"} on air</a>` : "";
+  syncShimmer();
+  if (live.length) listTimer = setTimeout(renderList, 3000); // keep the on-air states current
 }
 
-// ---------------------------------------------------------------- new episode
-function renderNew() {
-  $("#main").innerHTML = `<form class="new" id="newform">
-    <h1>New episode</h1>
-    <label class="f"><span>What should the episode be about?</span>
-      <textarea class="topic" name="topic" rows="2" required placeholder="How UPI payments work"></textarea></label>
-    <label class="f"><span>Who is it for, and how should it feel? (optional)</span>
-      <textarea name="description" rows="2" placeholder="Class 8 students; friendly, with everyday examples"></textarea></label>
-    <div class="f"><span>Language</span><div class="langs" role="radiogroup" aria-label="Language">
-      ${CFG.languages.map((l) => `<label><input type="radio" name="lang" value="${l.code}" ${l.code === "hi" ? "checked" : ""}>
-        <span lang="${l.code}">${NATIVE[l.code] || l.name}<small>${l.name}</small></span></label>`).join("")}
-    </div></div>
-    <div class="row">
-      <label class="f"><span>Speakers: <output name="spk">2</output></span>
-        <input type="range" name="speakers" min="2" max="5" value="2"></label>
-      <label class="f"><span>Length: <output name="mins">12</output> minutes</span>
-        <input type="range" name="minutes" min="5" max="20" value="12"></label>
-    </div>
-    <div class="f" id="mixbox"><span>English mixing</span>
-      <div class="seg">${CFG.code_mix.map((m) => `<label><input type="radio" name="code_mix" value="${m}" ${m === "medium" ? "checked" : ""}><span>${cap(m)}</span></label>`).join("")}</div>
-      <p class="hint" id="mixhint">${MIX.medium}</p></div>
-    <div class="bar">
-      <button class="btn btn-primary" type="submit" value="auto">Make the whole episode</button>
-      <button class="btn" type="submit" value="plan">Plan first, then decide</button>
-    </div>
-    <p class="hint">Making the whole episode runs planning, research and writing in one go, which takes about five to eight minutes.
-      Planning first lets you change the cast and outline before research starts.</p>
-  </form>`;
+// ---------------------------------------------------------------- home: new episode and your episodes
+const topbar = () => `<header class="topbar"><div><a class="brand" href="#/new"><i class="dot"></i>Podcast Studio</a>
+  <span id="onair"></span></div></header>`;
+const stepper = (name, label, min, max, value, unit, less, more) => `<div class="f"><span id="${name}-l">${label}</span>
+  <div class="stepper" role="group" aria-labelledby="${name}-l">
+    <button class="btn" type="button" data-act="step" data-name="${name}" data-d="-1" aria-label="${less}">−</button>
+    <input type="number" name="${name}" min="${min}" max="${max}" value="${value}" required aria-labelledby="${name}-l">
+    ${unit ? `<span class="unit">${unit}</span>` : ""}
+    <button class="btn" type="button" data-act="step" data-name="${name}" data-d="1" aria-label="${more}">+</button></div></div>`;
+
+function renderHome() {
+  paint(`${topbar()}<form class="new" id="newform">
+    <h1>What should the episode be about?</h1>
+    <div class="composer">
+      <textarea class="topic" name="topic" rows="2" required aria-label="Topic" placeholder="How UPI payments work"></textarea>
+      <label class="f desc"><span>Who is it for, and how should it feel? (optional)</span>
+        <textarea name="description" rows="1" placeholder="Class 8 students; friendly, with everyday examples"></textarea></label>
+      <div class="f"><span>Language</span><div class="langs" role="radiogroup" aria-label="Language">
+        ${CFG.languages.map((l) => `<label><input type="radio" name="lang" value="${l.code}" ${l.code === "hi" ? "checked" : ""}>
+          <span lang="${l.code}">${NATIVE[l.code] || l.name}<small>${l.name}</small></span></label>`).join("")}
+      </div></div>
+      <div class="row">
+        ${stepper("speakers", "Speakers", 2, 5, 2, "", "Fewer speakers", "More speakers")}
+        ${stepper("minutes", "Length", 5, 20, 12, "min", "Shorter", "Longer")}
+        <div class="f" id="mixbox"><span>English mixing</span>
+          <div class="seg">${CFG.code_mix.map((m) => `<label><input type="radio" name="code_mix" value="${m}" ${m === "medium" ? "checked" : ""}><span>${cap(m)}</span></label>`).join("")}</div>
+          <p class="hint" id="mixhint">${MIX.medium}</p></div>
+      </div>
+      <div class="bar">
+        <button class="btn btn-primary" type="submit" value="auto">Make the whole episode</button>
+        <button class="btn btn-line" type="submit" value="plan">Plan first, then decide</button>
+      </div>
+      <p class="hint">Making the whole episode runs planning, research and writing in one go, which takes about five to eight minutes.
+        Planning first lets you change the cast and outline before research starts.</p>
+    </div></form>
+    <section class="shelf" aria-label="Your episodes"><h2>Your episodes</h2><div class="covers" id="covers">${coverSkeleton()}</div></section>`);
+}
+
+// an episode's cover: a colour and a few speech blocks per speaker, the same every time for that episode
+const COVERS = [["#221B5C", "#FFFFFF"], ["#00727A", "#FFFFFF"], ["#F4B71E", "#221B5C"], ["#B35C00", "#FFFFFF"],
+  ["#3B32B3", "#FFFFFF"], ["#3E7D1E", "#FFFFFF"], ["#8A2A8F", "#FFFFFF"]];
+const hash = (s) => [...s].reduce((h, c) => (h * 31 + c.codePointAt(0)) % 233280, 7);
+function lanes(n, seed) {
+  const r = () => (seed = (seed * 9301 + 49297) % 233280) / 233280;
+  return times(n, () => {
+    let x = r() * 12, out = "";
+    while (x < 92) {
+      const w = 8 + r() * 22;
+      out += `<i style="left:${x.toFixed(1)}%;width:${Math.min(w, 100 - x).toFixed(1)}%"></i>`;
+      x += w + 4 + r() * 14;
+    }
+    return `<span>${out}</span>`;
+  });
+}
+function cover(e) {
+  const h = hash(e.id), [bg, fg] = COVERS[h % COVERS.length];
+  const state = e.running ? `<span class="state live"><i class="dot on"></i>On air: ${esc(e.task || "working")}</span>`
+    : `<span class="state">${e.has_audio ? "Audio ready" : e.has_script ? "Script ready" : "No script yet"}${
+        e.has_script && e.minutes ? `, about ${e.minutes} minutes` : ""}</span>`;
+  return `<a class="cover-link" href="#/ep/${e.id}/${tabOf(e)}"><span class="cover" style="--bg:${bg};--fg:${fg}">
+      <span class="top"><span lang="${e.lang}">${NATIVE[e.lang] || e.lang}</span><span>${e.speakers} speakers</span></span>
+      <span class="lanes" aria-hidden="true">${lanes(e.speakers || 2, h)}</span>
+      <span class="t" lang="${e.lang}">${esc(e.title)}</span></span>${state}</a>`;
 }
 function updateNewForm(form) {
-  form.spk.value = form.speakers.value;
-  form.mins.value = form.minutes.value;
   $("#mixbox").hidden = form.lang.value === "en";
   $("#mixhint").textContent = MIX[form.code_mix.value];
 }
@@ -215,8 +263,23 @@ async function submitNew(form, mode) {
 function stepNote(k) {
   if (k === "plan") return EP.plan ? `${EP.plan.segments.length} segments` : "";
   if (k === "research") return EP.facts.length ? `${EP.facts.length} facts` : "";
-  if (k === "script") return hasScript() && EP.stats ? `~${EP.stats.est_minutes} min` : "";
+  if (k === "script") return writes() ? "being written" : hasScript() && EP.stats ? `~${EP.stats.est_minutes} min` : "";
   if (k === "audio") return EP.audio?.episode ? `${(EP.audio.episode.seconds / 60).toFixed(1)} min` : "";
+}
+
+// a step is live while the agents work on it, done once it has output
+function liveStep() {
+  const j = EP.job;
+  if (!j.running) return null;
+  if (j.task === "generating audio") return "audio";
+  if (j.task === "planning" || !EP.plan) return "plan";
+  if (researching()) return "research";
+  return writes() ? "script" : null;
+}
+function stepState(k) {
+  const done = { plan: !!EP.plan, research: EP.facts.length > 0, script: !!EP.plan?.segments.every((s) => s.turns?.length),
+    audio: !!EP.audio?.episode }[k];
+  return k === liveStep() ? "live" : done ? "done" : "";
 }
 
 function render() {
@@ -231,8 +294,11 @@ function render() {
       <div class="meta"><span>${NATIVE[r.lang]}</span><span>${r.speakers} speakers</span><span>${r.minutes} minute target</span>
         ${r.lang !== "en" ? `<span>${cap(r.code_mix)} English mixing</span>` : ""}<span>Topic: ${esc(r.topic)}</span></div>
     </div>${lamp}</div>
-    <nav class="steps" aria-label="Steps">${STEPS.map(([k, l], i) =>
-      `<a href="#/ep/${EP.id}/${k}" ${k === TAB ? 'aria-current="page"' : ""}><b>${i + 1}</b>${l}<small>${stepNote(k)}</small></a>`).join("")}</nav>
+    <nav class="steps" aria-label="Steps">${STEPS.map(([k, l], i) => {
+      const st = stepState(k), mark = st === "live" ? '<i class="dot on"></i>' : st === "done" ? CHECK : `<b>${i + 1}</b>`;
+      return `<a class="${st}" href="#/ep/${EP.id}/${k}" ${k === TAB ? 'aria-current="page"' : ""}>
+        <span class="l">${mark}${l}</span><small>${stepNote(k) || "&nbsp;"}</small></a>`;
+    }).join("")}</nav>
     <div class="work"><fieldset class="stage" ${job.running ? "disabled" : ""}>${VIEWS[TAB]()}</fieldset>${cue()}</div>`);
   $$("textarea.auto").forEach(autosize);
   document.fonts.ready.then(() => $$("textarea.auto").forEach(autosize)); // sized again once the web fonts are in
@@ -441,6 +507,10 @@ async function act(method, path, body, msg) {
 }
 
 const ACTIONS = {
+  step: (b) => { // the − and + beside speakers and length; the number input keeps it within min and max
+    const input = b.form[b.dataset.name];
+    if (b.dataset.d > 0) input.stepUp(); else input.stepDown();
+  },
   sample: async (b) => { // three lines from the persona as typed; nothing is saved
     const i = +b.dataset.i, strip = b.closest(".strip"), box = $(".sample", strip);
     const speaker = Object.fromEntries(["name", "gender", "role", "knowledge", "style"].map((n) => [n, $(`[name=${n}]`, strip).value.trim()]));
@@ -563,9 +633,10 @@ window.addEventListener("hashchange", route);
 window.addEventListener("beforeunload", (e) => { if (dirty.size) e.preventDefault(); });
 
 (async () => {
-  const [, view, , tab] = location.hash.split("/");
-  if (view === "ep") episodeSkeleton(STEPS.some(([k]) => k === tab) ? tab : "plan");
-  else newSkeleton();
+  const [, view, id, tab] = location.hash.split("/");
+  document.body.classList.toggle("home", !(view === "ep" && id));
+  if (view === "ep" && id) episodeSkeleton(STEPS.some(([k]) => k === tab) ? tab : "plan");
+  else homeSkeleton();
   CFG = await api("GET", "/api/config");
   if (!location.hash || location.hash === "#") location.hash = "#/new";
   else route();

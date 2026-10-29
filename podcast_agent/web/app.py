@@ -47,9 +47,12 @@ def list_episodes():
         if "id" not in ep:  # runs from before the web app
             continue
         plan = ep.get("plan") or {}
+        job = jobs.get(ep["id"], {})
         out.append({"id": ep["id"], "title": plan.get("title") or ep["request"]["topic"],
                     "topic": ep["request"]["topic"], "lang": ep["request"]["lang"], "created": ep.get("created"),
-                    "running": jobs.get(ep["id"], {}).get("running", False),
+                    "speakers": len(plan.get("speakers") or []) or ep["request"].get("speakers"),
+                    "minutes": (ep.get("stats") or {}).get("est_minutes"),
+                    "running": job.get("running", False), "task": job.get("task"),
                     "has_script": any(s.get("turns") for s in plan.get("segments", [])),
                     "has_audio": bool((ep.get("audio") or {}).get("episode"))})
     return out
