@@ -403,9 +403,10 @@ async function renderSettings() {
       <label class="check"><input type="checkbox" name="web_search" ${s.web_search ? "checked" : ""}>
         Search the whole web with Tavily. When off, research uses Wikipedia only, which costs no credits.</label></section>
     <section class="panel"><h2>Audio</h2>
-      <div class="row"><label class="f"><span>Speed</span><select name="speed">${[1, 1.05, 1.1, 1.15, 1.2, 1.25, 1.3, 1.4, 1.5].map((v) =>
-        `<option value="${v}" ${v === s.speed ? "selected" : ""}>${v === 1 ? "1× (as the voice speaks)" : `${v}×`}</option>`).join("")}</select></label></div>
-      <p class="hint">Speeds up every line without changing the voice's pitch, so a 12-minute script at 1.2× plays in 10
+      <label class="f"><span>Speed</span><span class="seglen">
+        <input type="number" name="speed" min="1" max="1.5" step="0.01" value="${s.speed}" required><span>×</span></span></label>
+      <p class="hint">A multiplier from 1 (as the voice speaks) to 1.5. It speeds up every line without changing the voice's
+        pitch, so a 12-minute script at 1.2× plays in 10
         minutes. It applies when an episode's audio is built: on an existing episode, click Update audio on its Audio tab;
         no lines are generated again.</p></section>
     <section class="panel"><h2>Appearance</h2>
