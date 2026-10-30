@@ -68,7 +68,7 @@ Open http://127.0.0.1:8842. It has four tabs:
   to `.trash/` in the episodes folder.
 - **Voices:** a sample of each TTS voice, and the default voice for female and male speakers.
 - **Settings:** defaults for new episodes, the research step budget, review rounds per segment, web search on or off,
-  light or dark, and whether the model, web search and TTS are working. Saved in `settings.json` in the episodes
+  audio speed (applied when an episode's audio is built, pitch unchanged), light or dark, and whether the model, web search and TTS are working. Saved in `settings.json` in the episodes
   folder; server addresses and keys stay in the environment.
 
 Click the square beside an episode's title to give it a cover image (cropped to a square in the browser; saved as

@@ -29,6 +29,9 @@ def test_stitch_writes_the_episode(tmp_path):
     secs = ep["audio"]["episode"]["seconds"]
     assert 2.6 < secs < 3.0, secs  # 3 trimmed clips (~0.6 s each) + one turn gap (0.25) + one segment gap (0.8)
     assert (Path(tmp_path) / "episode.mp3").stat().st_size > 1000
+    stitch(ep, speed=1.25)  # each 0.5 s tone plays in ~0.4 s (its sharp edges smear a little); pauses stay as they are
+    fast = ep["audio"]["episode"]
+    assert fast["speed"] == 1.25 and 0.15 < secs - fast["seconds"] < 0.4, (secs, fast["seconds"])
     # a new take of a line gets a new clip file
     assert lines(ep)[0]["file"] != lines({**ep, "audio": {"voices": {"A": "v1"}, "takes": {"A|one": 1}}})[0]["file"]
 

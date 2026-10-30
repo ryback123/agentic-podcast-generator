@@ -312,12 +312,12 @@ def save_segment(eid: str, i: int, body: dict = Body(...)):
 @app.post("/api/episodes/{eid}/audio")
 def make_audio(eid: str, body: dict = Body(default={})):
     voices = body.get("voices") or None
-    return start(eid, "generating audio", lambda ep: tts.synthesize(ep, voices))
+    return start(eid, "generating audio", lambda ep: tts.synthesize(ep, voices, settings.load()["speed"]))
 
 
 @app.post("/api/episodes/{eid}/audio/{i}/{k}")
 def retake(eid: str, i: int, k: int):
-    return start(eid, f"new take of line {k + 1}", lambda ep: tts.new_take(ep, i, k))
+    return start(eid, f"new take of line {k + 1}", lambda ep: tts.new_take(ep, i, k, settings.load()["speed"]))
 
 
 app.mount("/", StaticFiles(directory=STATIC, html=True), name="static")

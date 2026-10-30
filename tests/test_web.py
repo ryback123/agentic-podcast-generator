@@ -44,11 +44,12 @@ def test_settings_are_checked_and_kept(tmp_path, monkeypatch):
     monkeypatch.setattr(settings, "RUNS", tmp_path)
     assert settings.load() == settings.DEFAULTS
     for bad in ({"lang": "xx"}, {"speakers": 9}, {"speakers": True}, {"minutes": 12.5}, {"review_rounds": 5},
-                {"research_steps": 2}, {"web_search": "yes"}, {"voice_male": 3}):
+                {"research_steps": 2}, {"web_search": "yes"}, {"voice_male": 3}, {"speed": 2}, {"speed": 0.8},
+                {"speed": "fast"}, {"speed": True}):
         with pytest.raises(ValueError):
             settings.save(bad)
-    saved = settings.save({"lang": "ta", "review_rounds": 0, "web_search": False, "api_key": "dropped"})
-    assert settings.load() == saved and "api_key" not in saved and saved["speakers"] == 2
+    saved = settings.save({"lang": "ta", "review_rounds": 0, "web_search": False, "speed": 1.15, "api_key": "dropped"})
+    assert settings.load() == saved and "api_key" not in saved and saved["speakers"] == 2 and saved["speed"] == 1.15
 
 
 def test_delete_moves_to_trash_and_duplicate_copies_the_request(tmp_path, monkeypatch):

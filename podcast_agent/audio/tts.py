@@ -80,8 +80,8 @@ def sample(voice, path):
     _tts(text, voice, path, lang)
 
 
-def synthesize(ep, voices=None, workers=4):
-    """Synthesize every line that has no clip yet, then stitch the episode."""
+def synthesize(ep, voices=None, speed=1.0, workers=4):
+    """Synthesize every line that has no clip yet, then stitch the episode at `speed`."""
     if not configured():
         raise RuntimeError("TTS is not configured (set TTS_BASE_URL)")
     a = ep.setdefault("audio", {"voices": {}, "takes": {}})
@@ -97,20 +97,20 @@ def synthesize(ep, voices=None, workers=4):
     lang = ep["request"]["lang"]
     with ThreadPoolExecutor(workers) as ex:
         list(ex.map(lambda ln: _tts(ln["text"], ln["voice"], run / ln["file"], lang), todo))
-    stitch(ep)
+    stitch(ep, speed)
 
 
-def new_take(ep, segment, line):
+def new_take(ep, segment, line, speed=1.0):
     """Re-roll one line's audio (new take), then re-stitch."""
     ln = next(x for x in lines(ep) if x["segment"] == segment and x["line"] == line)
     ep["audio"]["takes"][f"{ln['speaker']}|{ln['text']}"] = ln["take"] + 1
-    synthesize(ep)
+    synthesize(ep, speed=speed)
 
 
-def stitch(ep):
+def stitch(ep, speed=1.0):
     run = Path(ep["dir"])
     all_lines = lines(ep)
-    audio = mix([(ln["segment"], ln["mode"], load_clip(run / ln["file"])) for ln in all_lines])
+    audio = mix([(ln["segment"], ln["mode"], load_clip(run / ln["file"], speed)) for ln in all_lines])
     with wave.open(str(run / "episode.wav"), "wb") as w:
         w.setnchannels(1)
         w.setsampwidth(2)
@@ -120,6 +120,6 @@ def stitch(ep):
                     str(run / "episode.mp3")], check=True)
     seconds = len(audio) / RATE
     chars = sum(len(ln["text"]) for ln in all_lines)
-    ep["audio"]["episode"] = {"file": "episode.mp3", "seconds": round(seconds, 1), "built": time.time(),
+    ep["audio"]["episode"] = {"file": "episode.mp3", "seconds": round(seconds, 1), "built": time.time(), "speed": speed,
                               "chars_per_min": round(chars / (seconds / 60)) if seconds else None}
-    log(ep, "audio", f"episode stitched: {seconds / 60:.1f} min from {len(all_lines)} lines")
+    log(ep, "audio", f"episode stitched: {seconds / 60:.1f} min from {len(all_lines)} lines at {speed}x speed")

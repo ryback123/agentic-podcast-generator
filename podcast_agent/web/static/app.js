@@ -402,6 +402,12 @@ async function renderSettings() {
         segment, then fixes.</p>
       <label class="check"><input type="checkbox" name="web_search" ${s.web_search ? "checked" : ""}>
         Search the whole web with Tavily. When off, research uses Wikipedia only, which costs no credits.</label></section>
+    <section class="panel"><h2>Audio</h2>
+      <div class="row"><label class="f"><span>Speed</span><select name="speed">${[1, 1.05, 1.1, 1.15, 1.2, 1.25, 1.3, 1.4, 1.5].map((v) =>
+        `<option value="${v}" ${v === s.speed ? "selected" : ""}>${v === 1 ? "1× (as the voice speaks)" : `${v}×`}</option>`).join("")}</select></label></div>
+      <p class="hint">Speeds up every line without changing the voice's pitch, so a 12-minute script at 1.2× plays in 10
+        minutes. It applies when an episode's audio is built: on an existing episode, click Update audio on its Audio tab;
+        no lines are generated again.</p></section>
     <section class="panel"><h2>Appearance</h2>
       <div class="seg" role="radiogroup" aria-label="Theme">${[["system", "Same as the system"], ["light", "Light"], ["dark", "Dark"]].map(([v, l]) =>
         `<label><input type="radio" name="theme" value="${v}" ${v === theme ? "checked" : ""}><span>${l}</span></label>`).join("")}</div>
@@ -413,7 +419,7 @@ async function renderSettings() {
 async function saveSettings(form) {
   const body = { ...SETTINGS, lang: form.lang.value, speakers: +form.speakers.value, minutes: +form.minutes.value,
     code_mix: form.code_mix.value, research_steps: +form.research_steps.value, review_rounds: +form.review_rounds.value,
-    web_search: form.web_search.checked };
+    web_search: form.web_search.checked, speed: +form.speed.value };
   try {
     SETTINGS = await api("PUT", "/api/settings", body);
     toast("Settings saved");
@@ -625,7 +631,7 @@ const VIEWS = {
     const playing = (l) => !player.paused && player.src.endsWith(file(l.file)) ? " playing" : "";
     return `${busy && !ep ? playerSkeleton() : ""}${ep ? `<div class="player"><h2>Episode</h2>
         <audio controls preload="none" src="${file(ep.file)}?v=${ep.built}"></audio>
-        <div class="bar"><span class="hint">${(ep.seconds / 60).toFixed(1)} minutes${ep.chars_per_min ? `, ${ep.chars_per_min} characters a minute` : ""}</span>
+        <div class="bar"><span class="hint">${(ep.seconds / 60).toFixed(1)} minutes${ep.speed > 1 ? ` at ${ep.speed}× speed` : ""}${ep.chars_per_min ? `, ${ep.chars_per_min} characters a minute` : ""}</span>
           <span class="grow"></span><a class="btn" href="${file(ep.file)}" download>Download MP3</a>
           <a class="btn btn-quiet" href="${file("episode.wav")}" download>WAV</a></div></div>` : ""}
       <section><h2>Voices</h2><div class="voices">${EP.plan.speakers.map((s, i) => `

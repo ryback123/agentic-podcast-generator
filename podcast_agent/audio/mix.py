@@ -14,8 +14,10 @@ BACKCHANNEL_AT, BACKCHANNEL_GAIN = 0.6, 0.6  # a backchannel goes in the pause n
 PAUSE = 0.2  # a quiet stretch this long is a pause (real TTS: 0.2-1 s at clause breaks; ~0.1 s gaps are consonants)
 
 
-def load_clip(path):
-    raw = subprocess.run(["ffmpeg", "-v", "error", "-i", str(path), "-f", "s16le", "-ac", "1", "-ar", str(RATE), "-"],
+def load_clip(path, speed=1.0):
+    """A line's samples, sped up by `speed` without changing pitch, trimmed and level-matched."""
+    tempo = ["-af", f"atempo={speed}"] if speed != 1 else []
+    raw = subprocess.run(["ffmpeg", "-v", "error", "-i", str(path), *tempo, "-f", "s16le", "-ac", "1", "-ar", str(RATE), "-"],
                          capture_output=True, check=True).stdout
     x = np.frombuffer(raw, np.int16).astype(np.float32) / 32768
     loud = np.flatnonzero(np.abs(x) > 0.02)  # trim the clip's own leading/trailing silence
