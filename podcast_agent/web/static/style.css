@@ -220,7 +220,6 @@ output { font-weight: 650; color: var(--ink); }
 .outline li { background: var(--sheet); border-radius: 8px; padding: 12px 14px; display: grid;
               grid-template-columns: 34px 1fr auto auto; gap: 8px 12px; align-items: start; }
 .seglen { display: flex; align-items: center; gap: 6px; font-size: 14px; color: var(--muted); white-space: nowrap; }
-.seglen .lb { font-weight: 650; }
 .seglen input, .seglen .sk-field { width: 64px; }
 .outline li::before { counter-increment: s; content: counter(s); font-stretch: 72%; font-weight: 760; font-size: 26px;
                       line-height: 1.1; color: var(--muted); grid-row: span 3; }
