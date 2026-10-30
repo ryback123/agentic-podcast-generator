@@ -476,11 +476,13 @@ function stepNote(k) {
   if (k === "audio") return EP.audio?.episode ? `${(EP.audio.episode.seconds / 60).toFixed(1)} min` : "";
 }
 
+// generating the episode's audio, or a new take of one line
+const audioJob = () => EP.job.running && (EP.job.task === "generating audio" || EP.job.task.startsWith("new take"));
 // a step is live while the agents work on it, done once it has output
 function liveStep() {
   const j = EP.job;
   if (!j.running) return null;
-  if (j.task === "generating audio") return "audio";
+  if (audioJob()) return "audio";
   if (j.task === "planning" || !EP.plan) return "plan";
   if (researching()) return "research";
   return writes() ? "script" : null;
@@ -493,6 +495,7 @@ function stepState(k) {
 
 function render() {
   const p = EP.plan, r = EP.request, job = EP.job;
+  const listening = [...$$("main audio")].find((a) => !a.paused); // carried over the redraw, see below
   const title = p?.title || r.topic;
   const lamp = job.running ? `<div class="lamp on" role="status"><i></i>${esc(cap(job.task))}…</div>`
     : job.error ? `<div class="lamp err" role="status"><i></i>Stopped: ${esc(job.error.slice(0, 90))}</div>`
@@ -515,7 +518,9 @@ function render() {
       return `<a class="${st}" href="#/ep/${EP.id}/${k}" ${k === TAB ? 'aria-current="page"' : ""}>
         <span class="l">${mark}${l}</span><small>${stepNote(k) || "&nbsp;"}</small></a>`;
     }).join("")}</nav>
-    <div class="work"><fieldset class="stage" ${job.running ? "disabled" : ""}>${VIEWS[TAB]()}</fieldset>${cue()}</div>`);
+    <div class="work"><fieldset class="stage" ${job.running && TAB !== "audio" ? "disabled" : ""}>${VIEWS[TAB]()}</fieldset>${cue()}</div>`);
+  const same = listening && $(`main audio[src="${listening.getAttribute("src")}"]`);
+  if (same) { same.replaceWith(listening); listening.play(); } // taking it out of the page paused it; carry on
   $$("textarea.auto").forEach(autosize);
   document.fonts.ready.then(() => $$("textarea.auto").forEach(autosize)); // sized again once the web fonts are in
   const c = $(".cue");
@@ -614,7 +619,9 @@ const VIEWS = {
       return empty("Audio needs a text-to-speech service. Start the server with TTS_BASE_URL and TTS_VOICES set, then reload this page.");
     }
     const picked = pickVoices(EP.plan.speakers, EP.audio?.voices || {}, EP.request.lang), ep = EP.audio?.episode;
-    const ready = EP.lines.filter((l) => l.ready).length, busy = EP.job.running && EP.job.task === "generating audio";
+    const ready = EP.lines.filter((l) => l.ready).length, busy = audioJob();
+    const lock = EP.job.running ? "disabled" : ""; // no voice changes or new takes mid-job; playing is always fine
+    const playing = (l) => !player.paused && player.src.endsWith(file(l.file)) ? " playing" : "";
     return `${busy && !ep ? playerSkeleton() : ""}${ep ? `<div class="player"><h2>Episode</h2>
         <audio controls preload="none" src="${file(ep.file)}?v=${ep.built}"></audio>
         <div class="bar"><span class="hint">${(ep.seconds / 60).toFixed(1)} minutes${ep.chars_per_min ? `, ${ep.chars_per_min} characters a minute` : ""}</span>
@@ -622,14 +629,14 @@ const VIEWS = {
           <a class="btn btn-quiet" href="${file("episode.wav")}" download>WAV</a></div></div>` : ""}
       <section><h2>Voices</h2><div class="voices">${EP.plan.speakers.map((s, i) => `
         <label class="f" style="--c:${color(i)}"><b>${esc(s.name)}</b><span>${esc(s.gender)}, ${esc(s.role)}</span>
-          <select data-voice="${esc(s.name)}">${voiceOptions(picked[s.name], EP.request.lang)}</select></label>`).join("")}
+          <select data-voice="${esc(s.name)}" ${lock}>${voiceOptions(picked[s.name], EP.request.lang)}</select></label>`).join("")}
         </div>
-        <div class="bar" style="margin-top:12px"><button class="btn btn-primary" data-act="genAudio">${ready ? "Update audio" : "Generate audio"}</button>
+        <div class="bar" style="margin-top:12px"><button class="btn btn-primary" data-act="genAudio" ${lock}>${ready ? "Update audio" : "Generate audio"}</button>
           <span class="hint">${ready} of ${EP.lines.length} lines have audio${ready && ready < EP.lines.length ? "; only new or changed lines are generated" : ""}.</span></div></section>
       <section><h2>Lines</h2>${EP.lines.map((l) => `<div class="al" style="--c:${chanOf(l.speaker)}">
-        ${l.ready ? `<button class="play" type="button" data-act="play" data-src="${file(l.file)}" aria-label="Play line">${PLAY}</button>` : busy ? sk("32px", "dot") : "<span></span>"}
+        ${l.ready ? `<button class="play${playing(l)}" type="button" data-act="play" data-src="${file(l.file)}" aria-label="Play line">${PLAY}</button>` : busy ? sk("32px", "dot") : "<span></span>"}
         <span class="who">${esc(l.speaker)}${l.mode ? `<small>${MODE_NOTE[l.mode]}</small>` : ""}</span><span class="tx" lang="${EP.request.lang}" title="${esc(l.text)}">${esc(l.text)}</span>
-        ${l.ready ? `<button class="btn btn-quiet" data-act="retake" data-i="${l.segment}" data-k="${l.line}">New take</button>` : busy ? sk("84px") : '<span class="pending">no audio yet</span>'}
+        ${l.ready ? `<button class="btn btn-quiet" data-act="retake" data-i="${l.segment}" data-k="${l.line}" ${lock}>New take</button>` : busy ? sk("84px") : '<span class="pending">no audio yet</span>'}
       </div>`).join("")}</section>`;
   },
 };
@@ -832,7 +839,7 @@ const ACTIONS = {
     player.src = b.dataset.src;
     b.classList.add("playing");
     player.play().catch(() => { b.classList.remove("playing"); toast("Could not play this.", true); });
-    player.onended = () => b.classList.remove("playing");
+    player.onended = () => $$(".play.playing").forEach((x) => x.classList.remove("playing")); // the button may be redrawn by now
   },
 };
 
