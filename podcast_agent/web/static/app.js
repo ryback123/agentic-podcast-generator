@@ -12,6 +12,10 @@ const AGENT = { producer: "Producer", researcher: "Researcher", writer: "Writer"
 const STEPS = [["plan", "Plan"], ["research", "Research"], ["script", "Script"], ["audio", "Audio"]];
 const PLAY = '<svg viewBox="0 0 12 12" aria-hidden="true"><path d="M2 1l9 5-9 5z"/></svg>';
 const CHECK = '<svg viewBox="0 0 16 16" aria-hidden="true"><path d="M3 8.5l3.2 3L13 4.5"/></svg>';
+// iOS-style back: a thin rounded chevron, no box, the size of the cover square beside it; back to Episodes, where the
+// page shrinks into its cover
+const BACK = '<a class="back" href="#/episodes" aria-label="Back to your episodes"><svg viewBox="0 0 24 24" aria-hidden="true">'
+  + '<path d="M15 3.5 6.5 12l8.5 8.5"/></svg></a>';
 const PENCIL = '<svg viewBox="0 0 16 16" aria-hidden="true"><path d="M10.5 2.5l3 3L6 13H3v-3z"/></svg>';
 
 let CFG = null, SETTINGS = null, EP = null, TAB = "plan", timer = null, listTimer = null, wasRunning = false;
@@ -90,7 +94,7 @@ const audioSkeleton = () => playerSkeleton() + `<section aria-hidden="true"><h2>
 
 function episodeSkeleton(tab) {
   const body = { plan: () => planSkeleton(), research: researchSkeleton, script: scriptSkeleton, audio: audioSkeleton }[tab];
-  paint(`<div class="head" aria-hidden="true"><div class="title"><i class="sk thumb-sk"></i><div style="flex:1">${sk(55, "h1")}
+  paint(`<div class="head"><div class="title">${BACK}<i class="sk thumb-sk" aria-hidden="true"></i><div style="flex:1" aria-hidden="true">${sk(55, "h1")}
       <div class="meta">${["70px", "84px", "110px", "150px"].map((w) => sk(w, "chip")).join("")}</div></div></div></div>
     <nav class="steps" aria-hidden="true">${STEPS.map(([k, l], i) =>
       `<a ${k === tab ? 'aria-current="page"' : ""}><span class="l"><b>${i + 1}</b>${l}</span><small>&nbsp;</small></a>`).join("")}</nav>
@@ -494,7 +498,7 @@ function render() {
     : job.error ? `<div class="lamp err" role="status"><i></i>Stopped: ${esc(job.error.slice(0, 90))}</div>`
     : "";
   paint(`
-    <div class="head"><div class="title">
+    <div class="head"><div class="title">${BACK}
       <button class="thumb" type="button" data-act="pickCover" style="${coverColours(EP.id)}"
         aria-label="${EP.cover ? "Change" : "Add"} cover image" title="${EP.cover ? "Change" : "Add"} cover image">
         ${EP.cover ? coverImg(EP.id, EP.cover) : ""}<span class="edit" aria-hidden="true">${PENCIL}</span></button>
