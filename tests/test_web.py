@@ -40,6 +40,11 @@ def episode(run, eid, **request):
     (run / eid / "episode.json").write_text(json.dumps({"id": eid, "request": req, "plan": None, "facts": [], "log": []}))
 
 
+def test_the_page_is_revalidated_on_every_load():
+    r = TestClient(web.app).get("/app.js")
+    assert r.status_code == 200 and r.headers["cache-control"] == "no-cache"
+
+
 def test_settings_are_checked_and_kept(tmp_path, monkeypatch):
     monkeypatch.setattr(settings, "RUNS", tmp_path)
     assert settings.load() == settings.DEFAULTS

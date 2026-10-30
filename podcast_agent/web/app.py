@@ -26,6 +26,15 @@ app = FastAPI(title="Podcast Studio")
 STATIC = Path(__file__).resolve().parent / "static"
 
 
+@app.middleware("http")
+async def revalidate(request, call_next):
+    """Browsers check for a newer app.js or style.css on every load (a quick 304 when unchanged), so an update shows
+    up on a normal reload instead of whenever their cached copy expires."""
+    r = await call_next(request)
+    r.headers.setdefault("Cache-Control", "no-cache")
+    return r
+
+
 def segment_index(ep, i):
     if not ep.get("plan") or not 0 <= i < len(ep["plan"]["segments"]):
         raise HTTPException(404, "no such segment")
