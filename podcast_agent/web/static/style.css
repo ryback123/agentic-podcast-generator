@@ -38,7 +38,7 @@
 }
 
 * { box-sizing: border-box; }
-html, body { margin: 0; height: 100%; }
+html, body { margin: 0; } /* no fixed height: body grows with the page, so its bottom padding clears the tab bar */
 body { min-height: 100vh; background: var(--board); color: var(--ink); font: 16px/1.5 var(--ui); }
 a { color: inherit; }
 :focus-visible { outline: 2px solid var(--onair); outline-offset: 2px; }
@@ -54,7 +54,7 @@ body:not([data-view="ep"]) .appbar > div { max-width: 964px; } /* lined up with 
 .lockup img { border-radius: 7px; }
 .dot { width: 10px; height: 10px; border-radius: 50%; background: var(--lamp); display: inline-block; flex-shrink: 0; }
 :root { --navh: 68px; }
-body { padding-bottom: calc(var(--navh) + env(safe-area-inset-bottom)); }
+body { padding-bottom: calc(var(--navh) + 16px + env(safe-area-inset-bottom)); }
 .tabs { position: fixed; left: 0; right: 0; bottom: 0; z-index: 4; display: grid; grid-template-columns: repeat(4, minmax(0, 120px));
         justify-content: center; gap: 4px; padding: 6px 8px calc(6px + env(safe-area-inset-bottom)); background: var(--sheet);
         border-top: 1px solid var(--line); }
@@ -89,7 +89,7 @@ input[type=range] { accent-color: var(--ink); width: 100%; }
 [hidden] { display: none !important; }
 
 /* ---------- main layout */
-main { max-width: 1344px; margin: 0 auto; padding: 28px 32px 60px; }
+main { max-width: 1344px; margin: 0 auto; padding: 28px 32px; }
 /* every tab's page is one centred column; an episode's page, with its script beside the activity log, is wider */
 body:not([data-view="ep"]) main { max-width: 964px; }
 .head { display: flex; justify-content: space-between; align-items: flex-start; gap: 20px; margin-bottom: 6px; }
@@ -329,7 +329,7 @@ details.trace summary { cursor: pointer; font-weight: 600; }
   .cue { position: static; max-height: 320px; border-left: 0; border-top: 1px solid var(--line); padding: 14px 0 0; }
 }
 @media (max-width: 760px) {
-  main { padding: 20px 16px 48px; }
+  main { padding: 20px 16px 24px; }
   .covers { grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 20px 14px; }
   .cover { padding: 12px 14px; }
   .cover .top span + span { display: none; } /* the speaker count; the cover's bars show one row per speaker */
