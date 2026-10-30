@@ -218,7 +218,10 @@ output { font-weight: 650; color: var(--ink); }
 .strip .nm { font-weight: 720; font-stretch: 80%; font-size: 18px; color: var(--c); border-color: transparent; padding-left: 0; }
 .outline { counter-reset: s; display: flex; flex-direction: column; gap: 10px; margin: 0; padding: 0; list-style: none; }
 .outline li { background: var(--sheet); border-radius: 8px; padding: 12px 14px; display: grid;
-              grid-template-columns: 34px 1fr 90px auto; gap: 8px 12px; align-items: start; }
+              grid-template-columns: 34px 1fr auto auto; gap: 8px 12px; align-items: start; }
+.seglen { display: flex; align-items: center; gap: 6px; font-size: 14px; color: var(--muted); white-space: nowrap; }
+.seglen .lb { font-weight: 650; }
+.seglen input, .seglen .sk-field { width: 64px; }
 .outline li::before { counter-increment: s; content: counter(s); font-stretch: 72%; font-weight: 760; font-size: 26px;
                       line-height: 1.1; color: var(--muted); grid-row: span 3; }
 .outline .wide { grid-column: 2 / span 3; }
@@ -345,9 +348,11 @@ details.trace summary { cursor: pointer; font-weight: 600; }
   h1 { font-size: 30px; }
   .ln { grid-template-columns: 1fr auto; }
   .ln textarea, .sk-ln .tx { grid-column: 1 / -1; grid-row: 2; }
-  .outline li { grid-template-columns: 1fr; }
+  .outline li { grid-template-columns: auto 1fr auto; } /* number and title, then duration and Remove under the title */
   .outline li::before { grid-row: auto; }
-  .outline .wide { grid-column: auto; }
+  .outline li > input[name=title] { grid-column: 2 / -1; }
+  .outline .seglen { grid-column: 2; }
+  .outline .wide { grid-column: 1 / -1; }
   .al { grid-template-columns: 36px 1fr auto; }
   .al .tx { grid-column: 1 / -1; white-space: normal; }
 }

@@ -67,10 +67,10 @@ const field = (lines, seed = 0) => `<span class="sk-field">${para(lines, seed)}<
 
 function planSkeleton(speakers = 2, minutes = 10) {
   return `<section aria-hidden="true"><h2>Cast</h2><div class="strips">${times(speakers, (i) => `
-      <div class="strip" style="--c:${color(i)}">${sk(48, "tint")}${["Gender", "Role", "Knows", "Talks"].map((l, j) =>
+      <div class="strip" style="--c:${color(i)}">${sk(48, "tint")}${["Gender", "Role", "Knows", "Persona"].map((l, j) =>
         `<div class="f"><span>${l}</span>${field(j > 1 ? 2 : 1, i + j)}</div>`).join("")}</div>`)}</div></section>
     <section aria-hidden="true"><h2>Outline</h2><ol class="outline">${times(Math.max(4, Math.round(minutes / 2)), (i) => `
-      <li>${field(1, i)}${field(1, i + 3)}<span></span>
+      <li>${field(1, i)}<span class="seglen"><span class="lb">Duration</span><span class="sk-field">${sk("30px")}</span><span>min</span></span><span></span>
         <div class="f wide"><span>Goal</span>${field(1, i + 1)}</div>
         <div class="f wide"><span>Research questions, one per line</span>${field(2, i + 2)}</div></li>`)}</ol></section>`;
 }
@@ -556,7 +556,8 @@ const VIEWS = {
     <section><h2>Outline</h2><ol class="outline">${p.segments.map((s, i) => `
       <li data-seg="${i}">
         <input type="text" name="title" value="${esc(s.title)}" aria-label="Segment title">
-        <input type="number" name="minutes" min="0.5" step="0.5" value="${s.minutes}" aria-label="Minutes">
+        <label class="seglen"><span class="lb">Duration</span>
+          <input type="number" name="minutes" min="0.5" step="0.5" value="${s.minutes}" aria-label="Duration in minutes"><span>min</span></label>
         <button class="btn btn-quiet" type="button" data-act="dropSeg" data-i="${i}">Remove</button>
         <label class="f wide"><span>Goal</span><textarea class="auto" name="goal" rows="1">${esc(s.goal || "")}</textarea></label>
         <label class="f wide"><span>Research questions, one per line</span>
