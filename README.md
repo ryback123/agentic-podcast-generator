@@ -62,7 +62,8 @@ To serve a model yourself, for example: `vllm serve google/gemma-4-31B-it --serv
 python -m uvicorn podcast_agent.web.app:app --host 127.0.0.1 --port 8842
 ```
 
-Open http://127.0.0.1:8842. It has four tabs:
+Open http://127.0.0.1:8842. It has four tabs, in a sidebar on a computer (which also lists the jobs running and how
+far each got) and in a bottom tab bar on a phone:
 
 - **New:** the new-episode form.
 - **Episodes:** every episode, with search and filters for language and state; a count on the tab shows how many
@@ -82,8 +83,9 @@ Click the square beside an episode's title to give it a cover image (cropped to 
 - **Research:** run research again.
 - **Script:** edit any line and choose how it starts (own turn, filler while the other keeps talking, cuts in with a
   hard stop, cuts in with a fade), review or fix a segment, or rewrite a segment with a note.
-- **Audio:** pick voices and re-roll a single line's audio. While the episode plays, its chapter and line light up
-  and the line list follows along; click a chapter or a line to play from there.
+- **Audio:** pick voices and re-roll a single line's audio. The player shows what is playing (chapter, line,
+  speaker) over a scrubber cut at the chapters; the lines are grouped by chapter, the playing line lights up and the
+  list follows along; click a chapter or a line to play from there.
 
 "Make the whole episode" runs every step in one go. Long steps run as background jobs while the page shows what the
 agents are doing.
@@ -140,6 +142,8 @@ podcast_agent/
     └── static/        the browser UI (plain JS, no build step)
         └── assets/    the logo: logo.svg is the source; icon-32.png and icon-180.png are exported from it
 tests/                 python -m pytest
+PRODUCT.md, DESIGN.md  who the app is for, and its visual system (colours, type, motion); read before UI changes
+.impeccable/surfaces/  the design brief behind the current look
 dev/tts_standin.py     local OpenAI-style TTS server, used for development before the course TTS API
 ```
 

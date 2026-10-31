@@ -218,3 +218,8 @@ __marimo__/
 
 # Streamlit
 .streamlit/secrets.toml
+
+# design tool working files (screenshots, mockups, build state); briefs in .impeccable/surfaces/ are kept
+.impeccable/review/
+.impeccable/mocks/
+.impeccable/build/

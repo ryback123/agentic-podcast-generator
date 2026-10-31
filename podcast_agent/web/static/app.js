@@ -10,7 +10,18 @@ const MIX = { light: "Mostly in the language; English only for technical terms."
 const AGENT = { producer: "Producer", researcher: "Researcher", writer: "Writer", critics: "Critics", user: "You",
   audio: "Audio", done: "Script", error: "Error" };
 const STEPS = [["plan", "Plan"], ["research", "Research"], ["script", "Script"], ["audio", "Audio"]];
-const PLAY = '<svg viewBox="0 0 12 12" aria-hidden="true"><path d="M2 1l9 5-9 5z"/></svg>';
+const PLAY = '<svg class="go" viewBox="0 0 12 12" aria-hidden="true"><path d="M3 1.2l8 4.8-8 4.8z"/></svg>'
+  + '<svg class="pause" viewBox="0 0 12 12" aria-hidden="true"><path d="M2.5 1.5h2.5v9H2.5zM7 1.5h2.5v9H7z"/></svg>';
+const COPY = '<svg viewBox="0 0 16 16" aria-hidden="true"><rect x="5" y="5" width="8.5" height="8.5" rx="1.5"/><path d="M11 5V3.5A1.5 1.5 0 0 0 9.5 2h-6A1.5 1.5 0 0 0 2 3.5v6A1.5 1.5 0 0 0 3.5 11H5"/></svg>';
+const ICON = (d) => `<svg viewBox="0 0 16 16" aria-hidden="true"><path d="${d}"/></svg>`;
+const MINUS = ICON("M3.5 8h9"), PLUS = ICON("M8 3.5v9M3.5 8h9"), CROSS = ICON("M4.5 4.5l7 7M11.5 4.5l-7 7");
+const DOWNLOAD = ICON("M8 2.5v8M4.5 7.5 8 11l3.5-3.5M3 13.5h10");
+const IMAGE = '<svg viewBox="0 0 16 16" aria-hidden="true"><rect x="2" y="3" width="12" height="10" rx="1.5"/><path d="M2.5 11.5l3.5-3.5 3 3 2-2 2.5 2.5"/></svg>';
+// the logo's mic, for an episode with no cover image yet
+const MARK = '<svg class="mark" viewBox="0 0 64 64" aria-hidden="true"><rect x="25" y="8" width="14" height="27" rx="7" fill="currentColor"/>'
+  + '<path d="M22.8 12.3A13 13 0 0 0 22.8 30.7M18.6 8.1A19 19 0 0 0 18.6 34.9M41.2 12.3A13 13 0 0 1 41.2 30.7M45.4 8.1A19 19 0 0 1 45.4 34.9" fill="none" stroke="currentColor" stroke-width="3.6" stroke-linecap="round" opacity=".55"/>'
+  + '<path d="M32 35.5V52M23 52.5h18" fill="none" stroke="currentColor" stroke-width="4" stroke-linecap="round"/></svg>';
+const TRASH = '<svg viewBox="0 0 16 16" aria-hidden="true"><path d="M2.5 4h11M6.5 4V2.5h3V4M4 4l.7 9.5h6.6L12 4"/></svg>';
 const CHECK = '<svg viewBox="0 0 16 16" aria-hidden="true"><path d="M3 8.5l3.2 3L13 4.5"/></svg>';
 // iOS-style back: a thin rounded chevron, no box, the size of the cover square beside it; back to Episodes, where the
 // page shrinks into its cover
@@ -43,7 +54,13 @@ function toast(msg, bad = false) {
 const color = (i) => `var(--ch${(i % 5) + 1})`;
 const chanOf = (name) => color(Math.max(0, EP.plan.speakers.findIndex((s) => s.name === name)));
 const mmss = (s) => `${Math.floor(s / 60)}:${String(Math.floor(s % 60)).padStart(2, "0")}`;
-const clock = (t) => new Date(t * 1000).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit", second: "2-digit" });
+function when(t) {
+  const d = new Date(t * 1000), now = new Date(), s = (now - d) / 1000;
+  if (s < 60) return "just now";
+  if (s < 3600) return `${Math.floor(s / 60)} min ago`;
+  const hm = d.toLocaleTimeString([], { hour: "numeric", minute: "2-digit" });
+  return d.toDateString() === now.toDateString() ? hm : `${d.toLocaleDateString([], { month: "short", day: "numeric" })}, ${hm}`;
+}
 const cap = (s) => (s ? s[0].toUpperCase() + s.slice(1) : "");
 const file = (p) => `/api/episodes/${EP.id}/files/${p}`;
 const hasScript = () => !!EP.plan?.segments.some((s) => s.turns?.length);
@@ -54,7 +71,7 @@ function paint(html) {
   syncShimmer();
 }
 // every placeholder runs on the page clock, so the shimmer stays in step when the page re-renders during a job
-function syncShimmer() { for (const a of document.getAnimations()) if (["sk", "glow"].includes(a.animationName)) a.startTime = 0; }
+function syncShimmer() { for (const a of document.getAnimations()) if (["sk", "ping"].includes(a.animationName)) a.startTime = 0; }
 
 // ---------------------------------------------------------------- loading placeholders
 // Shaped like the content they stand for, using the same layout classes. Widths come from a fixed list, so a
@@ -228,6 +245,9 @@ async function refreshList() {
   const live = LIST.filter((e) => e.running);
   $("#busy").innerHTML = live.length // a count on the Episodes tab, like an app's
     ? `<b class="badge" aria-hidden="true">${live.length}</b><span class="vh">, ${live.length} in progress</span>` : "";
+  $("#jobs").innerHTML = live.length ? `<h2>In progress</h2>${live.map((e) => `<a class="job" href="#/ep/${e.id}/${tabOf(e)}">
+    <span class="t" lang="${e.lang}">${esc(e.title)}</span><span class="task"><i class="dot"></i>${esc(cap(e.task || "working"))}…</span>
+    ${progBar(e.progress)}</a>`).join("")}` : "";
   fillCovers();
   syncShimmer();
   if (live.length) listTimer = setTimeout(refreshList, 3000); // keep the in-progress states current
@@ -251,10 +271,10 @@ const mixBox = (sel, lang) => `<div class="f mixbox" ${lang === "en" ? "hidden" 
   <p class="hint mixhint">${MIX[sel]}</p></div>`;
 const stepper = (name, label, min, max, value, unit, less, more) => `<div class="f"><span id="${name}-l">${label}</span>
   <div class="stepper" role="group" aria-labelledby="${name}-l">
-    <button class="btn" type="button" data-act="step" data-name="${name}" data-d="-1" aria-label="${less}">−</button>
+    <button class="btn" type="button" data-act="step" data-name="${name}" data-d="-1" aria-label="${less}">${MINUS}</button>
     <input type="number" name="${name}" min="${min}" max="${max}" value="${value}" required aria-labelledby="${name}-l">
     ${unit ? `<span class="unit">${unit}</span>` : ""}
-    <button class="btn" type="button" data-act="step" data-name="${name}" data-d="1" aria-label="${more}">+</button></div></div>`;
+    <button class="btn" type="button" data-act="step" data-name="${name}" data-d="1" aria-label="${more}">${PLUS}</button></div></div>`;
 
 function renderHome() { // laid out like Settings: a title, then panels, then the actions
   const s = SETTINGS;
@@ -436,8 +456,8 @@ async function saveVoices(form) {
 }
 
 // an episode's cover: a colour and a few speech blocks per speaker, the same every time for that episode
-const COVERS = [["#221B5C", "#FFFFFF"], ["#00727A", "#FFFFFF"], ["#F4B71E", "#221B5C"], ["#B35C00", "#FFFFFF"],
-  ["#3B32B3", "#FFFFFF"], ["#3E7D1E", "#FFFFFF"], ["#8A2A8F", "#FFFFFF"]];
+const COVERS = [["#312E81", "#FFFFFF"], ["#0F5E5A", "#FFFFFF"], ["#9D174D", "#FFFFFF"], ["#1E3A8A", "#FFFFFF"],
+  ["#92400E", "#FFFFFF"], ["#4C1D95", "#FFFFFF"], ["#155E75", "#FFFFFF"], ["#1F2937", "#FFFFFF"]];
 const hash = (s) => [...s].reduce((h, c) => (h * 31 + c.codePointAt(0)) % 233280, 7);
 function lanes(n, seed) {
   const r = () => (seed = (seed * 9301 + 49297) % 233280) / 233280;
@@ -451,7 +471,7 @@ function lanes(n, seed) {
     return `<span>${out}</span>`;
   });
 }
-const coverColours = (id) => { const [bg, fg] = COVERS[hash(id) % COVERS.length]; return `--bg:${bg};--fg:${fg}`; };
+const coverColours = (id) => { const [bg, fg] = COVERS[hash(id) % COVERS.length]; return `--bg-c:${bg};--fg-c:${fg}`; };
 const coverImg = (id, name) => `<img src="/api/episodes/${id}/files/${name}" alt="">`;
 function cover(e) { // an uploaded image fills the cover and the title goes under it; otherwise colour, bars and title
   const state = e.running ? `<span class="state live"><i class="dot on"></i>${esc(cap(e.task || "working"))}…</span>`
@@ -501,34 +521,63 @@ function stepState(k) {
   return k === liveStep() ? "live" : done ? "done" : "";
 }
 
+const progBar = (p) => `<span class="prog ${p == null ? "busy" : ""}" aria-hidden="true"><i style="width:${Math.round((p ?? 0) * 100)}%"></i></span>`;
+let SEEN = null; // what this step has shown, so items that arrive during a job can be told apart
+function fresh(key) {
+  const n = !SEEN.keys.has(key);
+  SEEN.keys.add(key);
+  return n && !SEEN.first ? " arrive" : "";
+}
+// how far a running step got: a fraction, or null when there is no way to tell
+function stepProgress(k) {
+  if (k === "research") {
+    const qs = Object.keys(EP.questions);
+    return qs.length ? qs.filter((q) => EP.facts.some((f) => f.q === q)).length / qs.length : null;
+  }
+  if (k === "script") {
+    const n = EP.plan.segments.length, now = drafting();
+    return now >= 0 ? now / n : EP.plan.segments.filter((s) => s.turns?.length).length / n;
+  }
+  if (k === "audio") return EP.lines.length ? EP.lines.filter((l) => l.ready).length / EP.lines.length : null;
+  return null;
+}
+
 function render() {
   const p = EP.plan, r = EP.request, job = EP.job;
-  const listening = [...$$("main audio")].find((a) => !a.paused); // carried over the redraw, see below
+  const first = SEEN?.id !== EP.id || SEEN?.tab !== TAB;
+  SEEN = first ? { id: EP.id, tab: TAB, keys: new Set(), first: true } : { ...SEEN, first: false };
+  const listening = [...$$("main audio")].find((a) => !a.paused || a.currentTime > 0); // carried over the redraw, see below
   const title = p?.title || r.topic;
   const lamp = job.running ? `<div class="lamp on" role="status"><i></i>${esc(cap(job.task))}…</div>`
     : job.error ? `<div class="lamp err" role="status"><i></i>Stopped: ${esc(job.error.slice(0, 90))}</div>`
     : "";
   paint(`
     <div class="head"><div class="title">${BACK}
-      <button class="thumb" type="button" data-act="pickCover" style="${coverColours(EP.id)}"
+      <button class="thumb ${EP.cover ? "" : "empty"}" type="button" data-act="pickCover" style="${coverColours(EP.id)}"
         aria-label="${EP.cover ? "Change" : "Add"} cover image" title="${EP.cover ? "Change" : "Add"} cover image">
-        ${EP.cover ? coverImg(EP.id, EP.cover) : ""}<span class="edit" aria-hidden="true">${PENCIL}</span></button>
+        ${EP.cover ? coverImg(EP.id, EP.cover) : MARK}<span class="edit" aria-hidden="true">${EP.cover ? PENCIL : IMAGE}</span></button>
       <div>
       <h1 class="${/[^\x00-\x7F]/.test(title) ? "native" : ""}" lang="${r.lang}">${esc(title)}</h1>
       <div class="meta"><span>${NATIVE[r.lang]}</span><span>${r.speakers} speakers</span><span>${r.minutes} minute target</span>
-        ${r.lang !== "en" ? `<span>${cap(r.code_mix)} English mixing</span>` : ""}<span>Topic: ${esc(r.topic)}</span>
-        ${EP.cover ? '<button class="linkish" type="button" data-act="dropCover">Remove cover</button>' : ""}
-        <button class="linkish" type="button" data-act="duplicate">Duplicate</button>
-        <button class="linkish" type="button" data-act="deleteEp">Delete</button></div>
-    </div></div>${lamp}</div>
+        ${r.lang !== "en" ? `<span>${cap(r.code_mix)} English mixing</span>` : ""}<span>Topic: ${esc(r.topic)}</span></div>
+    </div></div>
+    <div class="headside">${lamp}<div class="actions">
+      ${EP.cover ? '<button class="btn btn-quiet" type="button" data-act="dropCover">Remove cover</button>' : ""}
+      <button class="btn btn-quiet" type="button" data-act="duplicate">${COPY}Duplicate</button>
+      <button class="btn btn-quiet btn-danger" type="button" data-act="deleteEp">${TRASH}Delete</button></div></div></div>
     <nav class="steps" aria-label="Steps">${STEPS.map(([k, l], i) => {
-      const st = stepState(k), mark = st === "live" ? '<i class="dot on"></i>' : st === "done" ? CHECK : `<b>${i + 1}</b>`;
+      const st = stepState(k), mark = st === "live" ? '<i class="dot"></i>' : st === "done" ? CHECK : `<b>${i + 1}</b>`;
       return `<a class="${st}" href="#/ep/${EP.id}/${k}" ${k === TAB ? 'aria-current="page"' : ""}>
-        <span class="l">${mark}${l}</span><small>${stepNote(k) || "&nbsp;"}</small></a>`;
+        <span class="l">${mark}${l}</span><small>${stepNote(k) || "&nbsp;"}</small>${st === "live" ? progBar(stepProgress(k)) : ""}</a>`;
     }).join("")}</nav>
     <div class="work"><fieldset class="stage" ${job.running && TAB !== "audio" ? "disabled" : ""}>${VIEWS[TAB]()}</fieldset>${cue()}</div>`);
   const same = listening && $(`main audio[src="${listening.getAttribute("src")}"]`);
-  if (same) { same.replaceWith(listening); listening.play(); follow(listening); } // taking it out of the page paused it; carry on
+  if (same) { // taking it out of the page paused it; carry on from the same place
+    const resume = !listening.paused;
+    same.replaceWith(listening);
+    if (resume) listening.play();
+    follow(listening);
+  }
   $$("textarea.auto").forEach(autosize);
   document.fonts.ready.then(() => $$("textarea.auto").forEach(autosize)); // sized again once the web fonts are in
   const c = $(".cue");
@@ -538,8 +587,8 @@ function render() {
 function cue() {
   const items = EP.log.slice(-150);
   return `<aside class="cue" aria-label="Agent activity"><h2>Activity</h2><ol>${items.map((e) =>
-    `<li class="${e.agent === "error" ? "error" : ""}"><time>${clock(e.t)}</time><span class="who">${esc(AGENT[e.agent] || e.agent)}</span>
-      ${esc(e.event)}${e.thought ? `<span class="th">${esc(e.thought)}</span>` : ""}</li>`).join("")}</ol></aside>`;
+    `<li class="${e.agent === "error" ? "error" : ""}${fresh(`c|${e.t}|${e.event}`)}"><span class="who">${esc(AGENT[e.agent] || e.agent)}</span>
+      <time datetime="${new Date(e.t * 1000).toISOString()}" title="${new Date(e.t * 1000).toLocaleString()}">${when(e.t)}</time><span class="ev">${esc(e.event)}</span>${e.thought ? `<span class="th">${esc(e.thought)}</span>` : ""}</li>`).join("")}</ol></aside>`;
 }
 
 const VIEWS = {
@@ -596,7 +645,7 @@ const VIEWS = {
         const fs = EP.facts.filter((f) => f.q === q);
         return `<div class="q"><header><h3>${esc(t)}</h3>
           <span class="n ${fs.length ? "" : "none"}">${fs.length ? `${fs.length} ${fs.length > 1 ? "facts" : "fact"}` : "No facts yet"}</span></header>
-          ${fs.length ? `<ul class="facts">${fs.map((f) => `<li>${esc(f.fact)} <a href="${esc(f.url)}" target="_blank" rel="noopener">${esc(f.source)}</a></li>`).join("")}</ul>` : busy ? factsSkeleton(qi) : ""}</div>`;
+          ${fs.length ? `<ul class="facts">${fs.map((f) => `<li class="${fresh(`f|${f.url}|${f.fact}`)}">${esc(f.fact)} <a href="${esc(f.url)}" target="_blank" rel="noopener">${esc(f.source)}</a></li>`).join("")}</ul>` : busy ? factsSkeleton(qi) : ""}</div>`;
       }).join("")}</div>` : '<p class="hint">This plan has no research questions, so the writer will use common knowledge only.</p>'}
       ${steps.length ? `<details class="trace" ${EP.job.running ? "open" : ""}><summary>How the research agent worked (${steps.length} steps)</summary>
         <ol>${steps.map((s) => `<li><b>${esc(s.event)}</b>${s.thought ? `<span class="th">${esc(s.thought)}</span>` : ""}
@@ -631,31 +680,57 @@ const VIEWS = {
     const ready = EP.lines.filter((l) => l.ready).length, busy = audioJob();
     const lock = EP.job.running ? "disabled" : ""; // no voice changes or new takes mid-job; playing is always fine
     const playing = (l) => !player.paused && player.src.endsWith(file(l.file)) ? " playing" : "";
-    return `${busy && !ep ? playerSkeleton() : ""}${ep ? `<div class="player"><h2>Episode</h2>
-        <audio controls preload="none" src="${file(ep.file)}?v=${ep.built}"></audio>
-        <div class="bar"><span class="hint">${(ep.seconds / 60).toFixed(1)} minutes${ep.speed > 1 ? ` at ${ep.speed}× speed` : ""}${ep.chars_per_min ? `, ${ep.chars_per_min} characters a minute` : ""}</span>
-          <span class="grow"></span><a class="btn" href="${file(ep.file)}" download>Download MP3</a>
-          <a class="btn btn-quiet" href="${file("episode.wav")}" download>WAV</a></div>
-        ${ep.times ? "" : '<p class="hint">Built before chapters and line highlighting existed: click Update audio below to add them (no lines are generated again).</p>'}
-        ${ep.chapters?.length ? `<ol class="chapters" aria-label="Chapters">${ep.chapters.map((c, i) => `<li><button type="button"
-          data-act="seek" data-t="${c.start}"><b>${i + 1}</b><span>${esc(c.title)}</span><time>${mmss(c.start)}</time></button></li>`).join("")}</ol>` : ""}</div>` : ""}
+    return `${busy && !ep ? playerSkeleton() : ""}${ep ? playerCard(ep) : ""}
       <section><h2>Voices</h2><div class="voices">${EP.plan.speakers.map((s, i) => `
         <label class="f" style="--c:${color(i)}"><b>${esc(s.name)}</b><span>${esc(s.gender)}, ${esc(s.role)}</span>
           <select data-voice="${esc(s.name)}" ${lock}>${voiceOptions(picked[s.name], EP.request.lang)}</select></label>`).join("")}
         </div>
         <div class="bar" style="margin-top:12px"><button class="btn btn-primary" data-act="genAudio" ${lock}>${ready ? "Update audio" : "Generate audio"}</button>
           <span class="hint">${ready} of ${EP.lines.length} lines have audio${ready && ready < EP.lines.length ? "; only new or changed lines are generated" : ""}.</span></div></section>
-      <section><h2>Lines</h2>${EP.lines.map((l, i) => {
-        const at = ep?.times?.[i]?.[0] === l.file ? ep.times[i] : null; // [file, start, end] in the episode, if still current
-        return `<div class="al" style="--c:${chanOf(l.speaker)}" ${at ? `data-t="${at[1]}" data-e="${at[2]}"` : ""} ${l.mode === "backchannel" ? "data-bc" : ""}>
-        ${l.ready ? `<button class="play${playing(l)}" type="button" data-act="play" data-src="${file(l.file)}" aria-label="Play line">${PLAY}</button>` : busy ? sk("32px", "dot") : "<span></span>"}
-        <span class="who">${esc(l.speaker)}${l.mode ? `<small>${MODE_NOTE[l.mode]}</small>` : ""}</span>${at ? `<button class="tx" type="button" data-act="seek" data-t="${at[1]}" lang="${EP.request.lang}"
-          title="Play the episode from here">${esc(l.text)}</button>` : `<span class="tx" lang="${EP.request.lang}" title="${esc(l.text)}">${esc(l.text)}</span>`}
-        ${l.ready ? `<button class="btn btn-quiet" data-act="retake" data-i="${l.segment}" data-k="${l.line}" ${lock}>New take</button>` : busy ? sk("84px") : '<span class="pending">no audio yet</span>'}
-      </div>`;
+      <section><h2>Lines</h2>${EP.plan.segments.map((s, si) => {
+        const mine = EP.lines.map((l, i) => [l, i]).filter(([l]) => l.segment === si);
+        if (!mine.length) return "";
+        const ch = ep?.chapters?.findIndex((c) => c.title === s.title && ep.times?.[mine[0][1]]?.[1] === c.start);
+        const span = ch >= 0 ? `${mmss(ep.chapters[ch].start)}–${mmss(ep.chapters[ch + 1]?.start ?? ep.seconds)}, ` : "";
+        return `<div class="chap"><h3><span class="n">${si + 1}</span>${esc(s.title)}<span class="hint">${span}${mine.length} lines</span></h3>
+        ${mine.map(([l, i], k) => {
+          const at = ep?.times?.[i]?.[0] === l.file ? ep.times[i] : null; // [file, start, end] in the episode, if still current
+          return `<div class="al" style="--c:${chanOf(l.speaker)}" ${at ? `data-t="${at[1]}" data-e="${at[2]}"` : ""} ${l.mode === "backchannel" ? "data-bc" : ""}
+            data-n="${k + 1}" data-sp="${esc(l.speaker)}">
+          ${l.ready ? `<button class="play${playing(l)}${fresh(`a|${l.file}`)}" type="button" data-act="play" data-src="${file(l.file)}" aria-label="Play line ${k + 1}">${PLAY}</button>` : busy ? sk("32px", "dot") : "<span></span>"}
+          <span class="who"><span class="k">${k + 1}</span>${esc(l.speaker)}${l.mode ? `<small>${MODE_NOTE[l.mode]}</small>` : ""}</span>${at ? `<button class="tx" type="button" data-act="seek" data-t="${at[1]}" lang="${EP.request.lang}"
+            title="Play the episode from here">${esc(l.text)}</button>` : `<span class="tx" lang="${EP.request.lang}" title="${esc(l.text)}">${esc(l.text)}</span>`}
+          ${l.ready ? `<button class="btn btn-quiet" data-act="retake" data-i="${l.segment}" data-k="${l.line}" ${lock}>New take</button>` : busy ? sk("84px") : '<span class="pending">no audio yet</span>'}
+        </div>`;
+        }).join("")}</div>`;
       }).join("")}</section>`;
   },
 };
+
+// the episode player: play and pause, what is playing now, a scrubber cut at the chapters, the chapters to jump to
+function playerCard(ep) {
+  const T = ep.seconds, ch = ep.chapters?.length ? ep.chapters : [{ title: "Episode", start: 0 }];
+  const segs = ch.map((c, i) => [c.start, ch[i + 1]?.start ?? T]);
+  return `<div class="player">
+    <audio preload="metadata" src="${file(ep.file)}?v=${ep.built}"></audio>
+    <div class="transport">
+      <button class="play big" type="button" data-act="toggle" aria-label="Play or pause the episode">${PLAY}</button>
+      <div class="np"><b class="np-t">${esc(ch[0].title)}</b><span class="np-s" data-idle="${esc(`${(T / 60).toFixed(1)} minutes${
+        ep.speed > 1 ? ` at ${ep.speed}× speed` : ""}${ep.chars_per_min ? `, ${ep.chars_per_min} characters a minute` : ""}`)}">${(T / 60).toFixed(1)} minutes${
+        ep.speed > 1 ? ` at ${ep.speed}× speed` : ""}${ep.chars_per_min ? `, ${ep.chars_per_min} characters a minute` : ""}</span></div>
+      <span class="dl"><a class="btn btn-quiet" href="${file(ep.file)}" download>${DOWNLOAD}MP3</a>
+        <a class="btn btn-quiet" href="${file("episode.wav")}" download>WAV</a></span>
+    </div>
+    <div class="scrub"><time class="cur">0:00</time>
+      <span class="track"><span class="segs" aria-hidden="true">${segs.map(([a, b]) =>
+        `<span style="flex:${Math.max(b - a, 1).toFixed(1)}" data-a="${a}" data-b="${b}"><i></i></span>`).join("")}</span>
+        <input type="range" class="seek" min="0" max="${T}" step="0.1" value="0" aria-label="Position in the episode"></span>
+      <time>${mmss(T)}</time></div>
+    ${ep.times ? "" : '<p class="hint">Built before chapters and line highlighting existed: click Update audio below to add them (no lines are generated again).</p>'}
+    ${ep.chapters?.length ? `<ol class="chapters" aria-label="Chapters">${ep.chapters.map((c, i) => `<li><button type="button"
+      data-act="seek" data-t="${c.start}"><b>${i + 1}</b><span>${esc(c.title)}</span><time>${mmss(c.start)}</time></button></li>`).join("")}</ol>` : ""}
+  </div>`;
+}
 
 const sampleLines = (i, lines = samples[i]) => lines ? `<ul class="sample-lines" lang="${EP.request.lang}">${lines.map((x) =>
   `<li>${esc(x)}</li>`).join("")}</ul>` : "";
@@ -676,15 +751,15 @@ function statsBar() {
 const MODES = [["", "Own turn"], ["backchannel", "Filler, they keep talking"], ["cut", "Cuts in, hard stop"], ["fade", "Cuts in, fade out"]];
 const MODE_NOTE = { backchannel: "filler", cut: "cuts in", fade: "cuts in, fades" };
 
-function lineRow(sp, tx, mode = "") {
+function lineRow(sp, tx, mode = "", cls = "") {
   const names = EP.plan.speakers.map((s) => s.name);
-  return `<div class="ln" style="--c:${chanOf(sp)}" data-mode="${mode}">
+  return `<div class="ln${cls}" style="--c:${chanOf(sp)}" data-mode="${mode}">
     <span class="who"><select class="sp" aria-label="Speaker">${names.map((n) => `<option ${n === sp ? "selected" : ""}>${esc(n)}</option>`).join("")}</select>
       <select class="md" aria-label="How this line starts" title="Filler: a quick hmm or I see in a pause of the previous line, which carries on. Cuts in: starts before the previous line ends, which stops dead or fades out.">
         ${MODES.map(([v, t]) => `<option value="${v}" ${v === mode ? "selected" : ""}>${t}</option>`).join("")}</select></span>
     <textarea class="auto" rows="1" lang="${EP.request.lang}" aria-label="Line">${esc(tx)}</textarea>
-    <span class="acts"><button class="btn btn-quiet" type="button" data-act="insLine" aria-label="Insert a line below">+</button>
-      <button class="btn btn-quiet" type="button" data-act="delLine" aria-label="Delete this line">×</button></span></div>`;
+    <span class="acts"><button class="btn btn-quiet" type="button" data-act="insLine" aria-label="Insert a line below">${PLUS}</button>
+      <button class="btn btn-quiet" type="button" data-act="delLine" aria-label="Delete this line">${CROSS}</button></span></div>`;
 }
 
 function sheet(s, i, wait = false) { // wait: the lines are being written, show placeholders
@@ -695,7 +770,7 @@ function sheet(s, i, wait = false) { // wait: the lines are being written, show 
       <span class="goal">${esc(s.goal || "")}</span></header>
     ${s.open_issues?.length && !wait ? `<ul class="issues">${s.open_issues.map((x) => `<li>${esc(x)}</li>`).join("")}</ul>` : ""}
     <div class="lines">${wait ? linesSkeleton(Math.min(8, Math.max(4, Math.round(s.minutes * 3))), i)
-      : lines.map(([sp, tx, mode]) => lineRow(sp, tx, mode)).join("") || '<p class="hint">Not written yet.</p>'}</div>
+      : lines.map(([sp, tx, mode], k) => lineRow(sp, tx, mode, fresh(`l|${i}|${k}|${tx}`))).join("") || '<p class="hint">Not written yet.</p>'}</div>
     <footer>
       <button class="btn btn-primary" data-act="saveSeg" data-i="${i}" ${dirty.has(i) ? "" : "disabled"}>Save edits</button>
       <button class="btn" type="button" data-act="addLine" data-i="${i}">Add line</button>
@@ -848,6 +923,12 @@ const ACTIONS = {
     act("POST", "/audio", { voices });
   },
   retake: (b) => act("POST", `/audio/${b.dataset.i}/${b.dataset.k}`),
+  toggle: () => {
+    const a = $(".player audio");
+    player.pause();
+    $$(".al .play.playing").forEach((x) => x.classList.remove("playing"));
+    if (a.paused) a.play().catch(() => toast("Could not play the episode.", true)); else a.pause();
+  },
   seek: (b) => { // a chapter or a line: play the episode from there
     const a = $(".player audio");
     player.pause();
@@ -856,6 +937,8 @@ const ACTIONS = {
     a.play();
   },
   play: (b) => {
+    if (b.classList.contains("ep")) return $(".player audio").pause(); // this row is the episode's line playing now
+    $(".player audio")?.pause();
     const playing = b.classList.contains("playing");
     $$(".play.playing").forEach((x) => x.classList.remove("playing"));
     if (playing) return player.pause();
@@ -869,7 +952,15 @@ const ACTIONS = {
 // ---------------------------------------------------------------- events
 let FOLLOWED = null; // start time of the line the transcript last scrolled to
 function follow(a) { // mark what the episode is playing: its chapter, its line, and a filler said over that line
-  const t = a.currentTime, chs = $$(".chapters button"), rows = $$(".al[data-t]");
+  const t = a.currentTime, chs = $$(".chapters button"), rows = $$(".al[data-t]"), box = a.closest(".player");
+  $(".play.big", box).classList.toggle("playing", !a.paused);
+  $(".cur", box).textContent = mmss(t);
+  if (document.activeElement !== $(".seek", box)) $(".seek", box).value = t;
+  $$(".segs > span", box).forEach((s) => {
+    const x = +s.dataset.a, y = +s.dataset.b;
+    s.firstChild.style.width = `${Math.min(100, Math.max(0, (t - x) / (y - x) * 100))}%`;
+    s.classList.toggle("now", t >= x && t < y);
+  });
   chs.forEach((b, i) => {
     const now = t >= +b.dataset.t && (i === chs.length - 1 || t < +chs[i + 1].dataset.t);
     if (now && !b.classList.contains("now")) b.closest("ol").scrollTo({ left: b.parentElement.offsetLeft - 16 }); // in view
@@ -877,14 +968,21 @@ function follow(a) { // mark what the episode is playing: its chapter, its line,
   });
   rows.forEach((r) => r.classList.toggle("now", t >= +r.dataset.t && t < +r.dataset.e));
   const cur = rows.find((r) => r.classList.contains("now") && !("bc" in r.dataset));
+  rows.forEach((r) => $(".play", r)?.classList.toggle("ep", r === cur && !a.paused));
+  const chap = chs.find((b) => b.classList.contains("now")), np = $(".np-s", box);
+  if (chap) $(".np-t", box).textContent = $("span", chap).textContent;
+  np.textContent = cur && (t > 0 || !a.paused) ? `Line ${cur.dataset.n}, ${cur.dataset.sp}` : np.dataset.idle;
   if (!cur || a.paused || cur.dataset.t === FOLLOWED) return;
   FOLLOWED = cur.dataset.t;
   const top = $(".player").getBoundingClientRect().bottom, r = cur.getBoundingClientRect();
-  if (r.top < top || r.bottom > innerHeight - ($(".tabs")?.offsetHeight || 0)) { // out of sight: bring it to the middle
+  const nav = $(".tabs").getBoundingClientRect().top, floor = nav > innerHeight / 2 ? nav : innerHeight;
+  if (r.top < top || r.bottom > floor) { // out of sight: bring it to the middle
     cur.scrollIntoView({ block: "center", behavior: matchMedia("(prefers-reduced-motion: reduce)").matches ? "auto" : "smooth" });
   }
 }
-document.addEventListener("timeupdate", (e) => { if (e.target.closest?.(".player")) follow(e.target); }, true); // capture: it does not bubble
+for (const ev of ["timeupdate", "play", "pause", "seeked"]) { // capture: media events do not bubble
+  document.addEventListener(ev, (e) => { if (e.target.closest?.(".player")) follow(e.target); }, true);
+}
 
 document.addEventListener("click", (e) => {
   const c = e.target.closest(".cover-link");
@@ -899,6 +997,7 @@ document.addEventListener("input", (e) => {
   if (t.matches("textarea.auto")) autosize(t);
   if (t.form?.id === "newform") updateNewForm(t.form);
   if (t.id === "find-q") { FIND.q = t.value; SHOWN = 24; fillCovers(); }
+  if (t.matches(".seek")) { const a = $(".player audio"); a.currentTime = +t.value; follow(a); }
   const sh = t.closest(".sheet");
   if (sh && t.name !== "note") markDirty(+sh.dataset.seg);
 });

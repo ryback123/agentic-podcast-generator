@@ -1,0 +1,1364 @@
+{
+  "schemaVersion": 2,
+  "generatedAt": "2026-10-31T12:51:28+00:00",
+  "title": "Design System: Podcast Studio",
+  "extensions": {
+    "colorMeta": {
+      "studio-violet": {
+        "role": "primary",
+        "displayName": "Studio Violet",
+        "tonalRamp": [
+          "oklch(15% 0.130 280)",
+          "oklch(26% 0.199 280)",
+          "oklch(38% 0.240 280)",
+          "oklch(49% 0.255 280)",
+          "oklch(61% 0.244 280)",
+          "oklch(72% 0.205 280)",
+          "oklch(84% 0.140 280)",
+          "oklch(95% 0.049 280)"
+        ],
+        "cssVar": "--accent / --accent-strong"
+      },
+      "violet-pressed": {
+        "role": "primary",
+        "displayName": "Violet Pressed",
+        "tonalRamp": [
+          "oklch(15% 0.116 281)",
+          "oklch(26% 0.177 281)",
+          "oklch(38% 0.214 281)",
+          "oklch(49% 0.227 281)",
+          "oklch(61% 0.217 281)",
+          "oklch(72% 0.183 281)",
+          "oklch(84% 0.125 281)",
+          "oklch(95% 0.043 281)"
+        ],
+        "canonical": "color-mix(in srgb, #5B3DF5 86%, #000000)"
+      },
+      "violet-wash": {
+        "role": "primary",
+        "displayName": "Violet Wash",
+        "tonalRamp": [
+          "oklch(15% 0.023 294)",
+          "oklch(26% 0.023 294)",
+          "oklch(38% 0.023 294)",
+          "oklch(49% 0.023 294)",
+          "oklch(61% 0.023 294)",
+          "oklch(72% 0.023 294)",
+          "oklch(84% 0.023 294)",
+          "oklch(95% 0.023 294)"
+        ],
+        "cssVar": "--accent-wash"
+      },
+      "violet-line": {
+        "role": "primary",
+        "displayName": "Violet Line",
+        "tonalRamp": [
+          "oklch(15% 0.063 293)",
+          "oklch(26% 0.063 293)",
+          "oklch(38% 0.063 293)",
+          "oklch(49% 0.063 293)",
+          "oklch(61% 0.063 293)",
+          "oklch(72% 0.063 293)",
+          "oklch(84% 0.063 293)",
+          "oklch(95% 0.029 293)"
+        ],
+        "cssVar": "--accent-line"
+      },
+      "on-violet": {
+        "role": "primary",
+        "displayName": "On Violet",
+        "tonalRamp": [
+          "oklch(15% 0.000 90)",
+          "oklch(26% 0.000 90)",
+          "oklch(38% 0.000 90)",
+          "oklch(49% 0.000 90)",
+          "oklch(61% 0.000 90)",
+          "oklch(72% 0.000 90)",
+          "oklch(84% 0.000 90)",
+          "oklch(95% 0.000 90)"
+        ],
+        "cssVar": "--on-accent"
+      },
+      "playing-row": {
+        "role": "primary",
+        "displayName": "Playing Row",
+        "tonalRamp": [
+          "oklch(15% 0.032 290)",
+          "oklch(26% 0.032 290)",
+          "oklch(38% 0.032 290)",
+          "oklch(49% 0.032 290)",
+          "oklch(61% 0.032 290)",
+          "oklch(72% 0.032 290)",
+          "oklch(84% 0.032 290)",
+          "oklch(95% 0.021 290)"
+        ],
+        "canonical": "color-mix(in srgb, #5B3DF5 12%, #F6F7F9)"
+      },
+      "workspace": {
+        "role": "neutral",
+        "displayName": "Workspace",
+        "tonalRamp": [
+          "oklch(15% 0.003 265)",
+          "oklch(26% 0.003 265)",
+          "oklch(38% 0.003 265)",
+          "oklch(49% 0.003 265)",
+          "oklch(61% 0.003 265)",
+          "oklch(72% 0.003 265)",
+          "oklch(84% 0.003 265)",
+          "oklch(95% 0.003 265)"
+        ],
+        "cssVar": "--bg"
+      },
+      "panel-white": {
+        "role": "neutral",
+        "displayName": "Panel White",
+        "tonalRamp": [
+          "oklch(15% 0.000 90)",
+          "oklch(26% 0.000 90)",
+          "oklch(38% 0.000 90)",
+          "oklch(49% 0.000 90)",
+          "oklch(61% 0.000 90)",
+          "oklch(72% 0.000 90)",
+          "oklch(84% 0.000 90)",
+          "oklch(95% 0.000 90)"
+        ],
+        "cssVar": "--panel"
+      },
+      "sunken-track": {
+        "role": "neutral",
+        "displayName": "Sunken Track",
+        "tonalRamp": [
+          "oklch(15% 0.005 258)",
+          "oklch(26% 0.005 258)",
+          "oklch(38% 0.005 258)",
+          "oklch(49% 0.005 258)",
+          "oklch(61% 0.005 258)",
+          "oklch(72% 0.005 258)",
+          "oklch(84% 0.005 258)",
+          "oklch(95% 0.005 258)"
+        ],
+        "cssVar": "--sunken"
+      },
+      "hairline": {
+        "role": "neutral",
+        "displayName": "Hairline",
+        "tonalRamp": [
+          "oklch(15% 0.008 261)",
+          "oklch(26% 0.008 261)",
+          "oklch(38% 0.008 261)",
+          "oklch(49% 0.008 261)",
+          "oklch(61% 0.008 261)",
+          "oklch(72% 0.008 261)",
+          "oklch(84% 0.008 261)",
+          "oklch(95% 0.005 261)"
+        ],
+        "cssVar": "--line"
+      },
+      "control-edge": {
+        "role": "neutral",
+        "displayName": "Control Edge",
+        "tonalRamp": [
+          "oklch(15% 0.012 260)",
+          "oklch(26% 0.012 260)",
+          "oklch(38% 0.012 260)",
+          "oklch(49% 0.012 260)",
+          "oklch(61% 0.012 260)",
+          "oklch(72% 0.012 260)",
+          "oklch(84% 0.012 260)",
+          "oklch(95% 0.005 260)"
+        ],
+        "cssVar": "--line-strong"
+      },
+      "ink": {
+        "role": "neutral",
+        "displayName": "Ink",
+        "tonalRamp": [
+          "oklch(15% 0.013 269)",
+          "oklch(26% 0.017 269)",
+          "oklch(38% 0.017 269)",
+          "oklch(49% 0.017 269)",
+          "oklch(61% 0.017 269)",
+          "oklch(72% 0.017 269)",
+          "oklch(84% 0.014 269)",
+          "oklch(95% 0.005 269)"
+        ],
+        "cssVar": "--ink"
+      },
+      "slate-muted": {
+        "role": "neutral",
+        "displayName": "Slate Muted",
+        "tonalRamp": [
+          "oklch(15% 0.012 264)",
+          "oklch(26% 0.019 264)",
+          "oklch(38% 0.023 264)",
+          "oklch(49% 0.024 264)",
+          "oklch(61% 0.023 264)",
+          "oklch(72% 0.019 264)",
+          "oklch(84% 0.013 264)",
+          "oklch(95% 0.005 264)"
+        ],
+        "cssVar": "--muted"
+      },
+      "sidebar-night": {
+        "role": "neutral",
+        "displayName": "Sidebar Night",
+        "tonalRamp": [
+          "oklch(15% 0.008 268)",
+          "oklch(26% 0.010 268)",
+          "oklch(38% 0.010 268)",
+          "oklch(49% 0.010 268)",
+          "oklch(61% 0.010 268)",
+          "oklch(72% 0.010 268)",
+          "oklch(84% 0.009 268)",
+          "oklch(95% 0.003 268)"
+        ],
+        "cssVar": "--side"
+      },
+      "sidebar-raised": {
+        "role": "neutral",
+        "displayName": "Sidebar Raised",
+        "tonalRamp": [
+          "oklch(15% 0.010 269)",
+          "oklch(26% 0.015 269)",
+          "oklch(38% 0.016 269)",
+          "oklch(49% 0.016 269)",
+          "oklch(61% 0.016 269)",
+          "oklch(72% 0.016 269)",
+          "oklch(84% 0.011 269)",
+          "oklch(95% 0.004 269)"
+        ],
+        "cssVar": "--side-2"
+      },
+      "sidebar-ink": {
+        "role": "neutral",
+        "displayName": "Sidebar Ink",
+        "tonalRamp": [
+          "oklch(15% 0.003 265)",
+          "oklch(26% 0.003 265)",
+          "oklch(38% 0.003 265)",
+          "oklch(49% 0.003 265)",
+          "oklch(61% 0.003 265)",
+          "oklch(72% 0.003 265)",
+          "oklch(84% 0.003 265)",
+          "oklch(95% 0.003 265)"
+        ],
+        "cssVar": "--side-ink"
+      },
+      "sidebar-muted": {
+        "role": "neutral",
+        "displayName": "Sidebar Muted",
+        "tonalRamp": [
+          "oklch(15% 0.013 264)",
+          "oklch(26% 0.018 264)",
+          "oklch(38% 0.018 264)",
+          "oklch(49% 0.018 264)",
+          "oklch(61% 0.018 264)",
+          "oklch(72% 0.018 264)",
+          "oklch(84% 0.014 264)",
+          "oklch(95% 0.005 264)"
+        ],
+        "cssVar": "--side-muted"
+      },
+      "done-green": {
+        "role": "tertiary",
+        "displayName": "Done Green",
+        "tonalRamp": [
+          "oklch(15% 0.070 150)",
+          "oklch(26% 0.107 150)",
+          "oklch(38% 0.129 150)",
+          "oklch(49% 0.137 150)",
+          "oklch(61% 0.131 150)",
+          "oklch(72% 0.111 150)",
+          "oklch(84% 0.076 150)",
+          "oklch(95% 0.026 150)"
+        ],
+        "cssVar": "--done"
+      },
+      "running-amber": {
+        "role": "tertiary",
+        "displayName": "Running Amber",
+        "tonalRamp": [
+          "oklch(15% 0.075 49)",
+          "oklch(26% 0.115 49)",
+          "oklch(38% 0.139 49)",
+          "oklch(49% 0.146 49)",
+          "oklch(61% 0.141 49)",
+          "oklch(72% 0.118 49)",
+          "oklch(84% 0.081 49)",
+          "oklch(95% 0.028 49)"
+        ],
+        "cssVar": "--run"
+      },
+      "running-wash": {
+        "role": "tertiary",
+        "displayName": "Running Wash",
+        "tonalRamp": [
+          "oklch(15% 0.058 96)",
+          "oklch(26% 0.058 96)",
+          "oklch(38% 0.058 96)",
+          "oklch(49% 0.058 96)",
+          "oklch(61% 0.058 96)",
+          "oklch(72% 0.058 96)",
+          "oklch(84% 0.058 96)",
+          "oklch(95% 0.058 96)"
+        ],
+        "cssVar": "--run-wash"
+      },
+      "stopped-red": {
+        "role": "tertiary",
+        "displayName": "Stopped Red",
+        "tonalRamp": [
+          "oklch(15% 0.097 28)",
+          "oklch(26% 0.148 28)",
+          "oklch(38% 0.179 28)",
+          "oklch(49% 0.190 28)",
+          "oklch(61% 0.182 28)",
+          "oklch(72% 0.153 28)",
+          "oklch(84% 0.105 28)",
+          "oklch(95% 0.036 28)"
+        ],
+        "cssVar": "--bad"
+      },
+      "stopped-wash": {
+        "role": "tertiary",
+        "displayName": "Stopped Wash",
+        "tonalRamp": [
+          "oklch(15% 0.031 18)",
+          "oklch(26% 0.031 18)",
+          "oklch(38% 0.031 18)",
+          "oklch(49% 0.031 18)",
+          "oklch(61% 0.031 18)",
+          "oklch(72% 0.031 18)",
+          "oklch(84% 0.031 18)",
+          "oklch(95% 0.024 18)"
+        ],
+        "cssVar": "--bad-wash"
+      },
+      "speaker-blue": {
+        "role": "secondary",
+        "displayName": "Speaker Blue",
+        "tonalRamp": [
+          "oklch(15% 0.111 263)",
+          "oklch(26% 0.169 263)",
+          "oklch(38% 0.204 263)",
+          "oklch(49% 0.215 263)",
+          "oklch(61% 0.207 263)",
+          "oklch(72% 0.174 263)",
+          "oklch(84% 0.119 263)",
+          "oklch(95% 0.041 263)"
+        ],
+        "cssVar": "--ch1"
+      },
+      "speaker-pink": {
+        "role": "secondary",
+        "displayName": "Speaker Pink",
+        "tonalRamp": [
+          "oklch(15% 0.103 6)",
+          "oklch(26% 0.157 6)",
+          "oklch(38% 0.190 6)",
+          "oklch(49% 0.202 6)",
+          "oklch(61% 0.193 6)",
+          "oklch(72% 0.163 6)",
+          "oklch(84% 0.111 6)",
+          "oklch(95% 0.038 6)"
+        ],
+        "cssVar": "--ch2"
+      },
+      "speaker-amber": {
+        "role": "secondary",
+        "displayName": "Speaker Amber",
+        "tonalRamp": [
+          "oklch(15% 0.075 49)",
+          "oklch(26% 0.115 49)",
+          "oklch(38% 0.139 49)",
+          "oklch(49% 0.146 49)",
+          "oklch(61% 0.141 49)",
+          "oklch(72% 0.118 49)",
+          "oklch(84% 0.081 49)",
+          "oklch(95% 0.028 49)"
+        ],
+        "cssVar": "--ch3"
+      },
+      "speaker-green": {
+        "role": "secondary",
+        "displayName": "Speaker Green",
+        "tonalRamp": [
+          "oklch(15% 0.054 166)",
+          "oklch(26% 0.082 166)",
+          "oklch(38% 0.099 166)",
+          "oklch(49% 0.105 166)",
+          "oklch(61% 0.100 166)",
+          "oklch(72% 0.084 166)",
+          "oklch(84% 0.058 166)",
+          "oklch(95% 0.020 166)"
+        ],
+        "cssVar": "--ch4"
+      },
+      "speaker-teal": {
+        "role": "secondary",
+        "displayName": "Speaker Teal",
+        "tonalRamp": [
+          "oklch(15% 0.048 223)",
+          "oklch(26% 0.073 223)",
+          "oklch(38% 0.088 223)",
+          "oklch(49% 0.094 223)",
+          "oklch(61% 0.089 223)",
+          "oklch(72% 0.075 223)",
+          "oklch(84% 0.051 223)",
+          "oklch(95% 0.018 223)"
+        ],
+        "cssVar": "--ch5"
+      },
+      "skeleton": {
+        "role": "neutral",
+        "displayName": "Skeleton",
+        "tonalRamp": [
+          "oklch(15% 0.006 265)",
+          "oklch(26% 0.006 265)",
+          "oklch(38% 0.006 265)",
+          "oklch(49% 0.006 265)",
+          "oklch(61% 0.006 265)",
+          "oklch(72% 0.006 265)",
+          "oklch(84% 0.006 265)",
+          "oklch(95% 0.006 265)"
+        ],
+        "cssVar": "--sk"
+      },
+      "skeleton-sheen": {
+        "role": "neutral",
+        "displayName": "Skeleton Sheen",
+        "tonalRamp": [
+          "oklch(15% 0.003 265)",
+          "oklch(26% 0.003 265)",
+          "oklch(38% 0.003 265)",
+          "oklch(49% 0.003 265)",
+          "oklch(61% 0.003 265)",
+          "oklch(72% 0.003 265)",
+          "oklch(84% 0.003 265)",
+          "oklch(95% 0.003 265)"
+        ],
+        "cssVar": "--sk-hi"
+      },
+      "violet-text-dark": {
+        "role": "primary",
+        "displayName": "Violet Text (dark)",
+        "tonalRamp": [
+          "oklch(15% 0.096 288)",
+          "oklch(26% 0.147 288)",
+          "oklch(38% 0.150 288)",
+          "oklch(49% 0.150 288)",
+          "oklch(61% 0.150 288)",
+          "oklch(72% 0.150 288)",
+          "oklch(84% 0.104 288)",
+          "oklch(95% 0.036 288)"
+        ],
+        "cssVar": "--accent (dark)"
+      },
+      "violet-fill-dark": {
+        "role": "primary",
+        "displayName": "Violet Fill (dark)",
+        "tonalRamp": [
+          "oklch(15% 0.128 282)",
+          "oklch(26% 0.195 282)",
+          "oklch(38% 0.236 282)",
+          "oklch(49% 0.246 282)",
+          "oklch(61% 0.239 282)",
+          "oklch(72% 0.202 282)",
+          "oklch(84% 0.138 282)",
+          "oklch(95% 0.048 282)"
+        ],
+        "cssVar": "--accent-strong (dark)"
+      },
+      "violet-pressed-dark": {
+        "role": "primary",
+        "displayName": "Violet Pressed (dark)",
+        "tonalRamp": [
+          "oklch(15% 0.111 282)",
+          "oklch(26% 0.170 282)",
+          "oklch(38% 0.205 282)",
+          "oklch(49% 0.218 282)",
+          "oklch(61% 0.208 282)",
+          "oklch(72% 0.175 282)",
+          "oklch(84% 0.120 282)",
+          "oklch(95% 0.041 282)"
+        ],
+        "canonical": "color-mix(in srgb, #6A4FFF 86%, #000000)"
+      },
+      "violet-wash-dark": {
+        "role": "primary",
+        "displayName": "Violet Wash (dark)",
+        "tonalRamp": [
+          "oklch(15% 0.108 286)",
+          "oklch(26% 0.164 286)",
+          "oklch(38% 0.189 286)",
+          "oklch(49% 0.189 286)",
+          "oklch(61% 0.189 286)",
+          "oklch(72% 0.169 286)",
+          "oklch(84% 0.116 286)",
+          "oklch(95% 0.040 286)"
+        ],
+        "cssVar": "--accent-wash (dark)"
+      },
+      "violet-line-dark": {
+        "role": "primary",
+        "displayName": "Violet Line (dark)",
+        "tonalRamp": [
+          "oklch(15% 0.108 286)",
+          "oklch(26% 0.164 286)",
+          "oklch(38% 0.189 286)",
+          "oklch(49% 0.189 286)",
+          "oklch(61% 0.189 286)",
+          "oklch(72% 0.169 286)",
+          "oklch(84% 0.116 286)",
+          "oklch(95% 0.040 286)"
+        ],
+        "cssVar": "--accent-line (dark)"
+      },
+      "playing-row-dark": {
+        "role": "primary",
+        "displayName": "Playing Row (dark)",
+        "tonalRamp": [
+          "oklch(15% 0.021 287)",
+          "oklch(26% 0.030 287)",
+          "oklch(38% 0.030 287)",
+          "oklch(49% 0.030 287)",
+          "oklch(61% 0.030 287)",
+          "oklch(72% 0.030 287)",
+          "oklch(84% 0.022 287)",
+          "oklch(95% 0.008 287)"
+        ],
+        "canonical": "color-mix(in srgb, #A396FF 12%, #0E0F13)"
+      },
+      "workspace-dark": {
+        "role": "neutral",
+        "displayName": "Workspace (dark)",
+        "tonalRamp": [
+          "oklch(15% 0.008 274)",
+          "oklch(26% 0.008 274)",
+          "oklch(38% 0.008 274)",
+          "oklch(49% 0.008 274)",
+          "oklch(61% 0.008 274)",
+          "oklch(72% 0.008 274)",
+          "oklch(84% 0.008 274)",
+          "oklch(95% 0.003 274)"
+        ],
+        "cssVar": "--bg (dark)"
+      },
+      "panel-dark": {
+        "role": "neutral",
+        "displayName": "Panel (dark)",
+        "tonalRamp": [
+          "oklch(15% 0.009 271)",
+          "oklch(26% 0.012 271)",
+          "oklch(38% 0.012 271)",
+          "oklch(49% 0.012 271)",
+          "oklch(61% 0.012 271)",
+          "oklch(72% 0.012 271)",
+          "oklch(84% 0.010 271)",
+          "oklch(95% 0.003 271)"
+        ]
+      },
+      "sunken-track-dark": {
+        "role": "neutral",
+        "displayName": "Sunken Track (dark)",
+        "tonalRamp": [
+          "oklch(15% 0.007 264)",
+          "oklch(26% 0.009 264)",
+          "oklch(38% 0.009 264)",
+          "oklch(49% 0.009 264)",
+          "oklch(61% 0.009 264)",
+          "oklch(72% 0.009 264)",
+          "oklch(84% 0.008 264)",
+          "oklch(95% 0.003 264)"
+        ],
+        "cssVar": "--sunken (dark)"
+      },
+      "hairline-dark": {
+        "role": "neutral",
+        "displayName": "Hairline (dark)",
+        "tonalRamp": [
+          "oklch(15% 0.011 266)",
+          "oklch(26% 0.017 266)",
+          "oklch(38% 0.018 266)",
+          "oklch(49% 0.018 266)",
+          "oklch(61% 0.018 266)",
+          "oklch(72% 0.017 266)",
+          "oklch(84% 0.012 266)",
+          "oklch(95% 0.004 266)"
+        ],
+        "cssVar": "--line (dark)"
+      },
+      "control-edge-dark": {
+        "role": "neutral",
+        "displayName": "Control Edge (dark)",
+        "tonalRamp": [
+          "oklch(15% 0.012 267)",
+          "oklch(26% 0.019 267)",
+          "oklch(38% 0.022 267)",
+          "oklch(49% 0.022 267)",
+          "oklch(61% 0.022 267)",
+          "oklch(72% 0.019 267)",
+          "oklch(84% 0.013 267)",
+          "oklch(95% 0.005 267)"
+        ],
+        "cssVar": "--line-strong (dark)"
+      },
+      "ink-dark": {
+        "role": "neutral",
+        "displayName": "Ink (dark)",
+        "tonalRamp": [
+          "oklch(15% 0.005 275)",
+          "oklch(26% 0.005 275)",
+          "oklch(38% 0.005 275)",
+          "oklch(49% 0.005 275)",
+          "oklch(61% 0.005 275)",
+          "oklch(72% 0.005 275)",
+          "oklch(84% 0.005 275)",
+          "oklch(95% 0.005 275)"
+        ],
+        "cssVar": "--ink (dark)"
+      },
+      "slate-muted-dark": {
+        "role": "neutral",
+        "displayName": "Slate Muted (dark)",
+        "tonalRamp": [
+          "oklch(15% 0.013 263)",
+          "oklch(26% 0.019 263)",
+          "oklch(38% 0.021 263)",
+          "oklch(49% 0.021 263)",
+          "oklch(61% 0.021 263)",
+          "oklch(72% 0.020 263)",
+          "oklch(84% 0.014 263)",
+          "oklch(95% 0.005 263)"
+        ],
+        "cssVar": "--muted (dark)"
+      },
+      "sidebar-night-dark": {
+        "role": "neutral",
+        "displayName": "Sidebar Night (dark)",
+        "tonalRamp": [
+          "oklch(15% 0.007 271)",
+          "oklch(26% 0.007 271)",
+          "oklch(38% 0.007 271)",
+          "oklch(49% 0.007 271)",
+          "oklch(61% 0.007 271)",
+          "oklch(72% 0.007 271)",
+          "oklch(84% 0.007 271)",
+          "oklch(95% 0.002 271)"
+        ],
+        "cssVar": "--side (dark)"
+      },
+      "sidebar-raised-dark": {
+        "role": "neutral",
+        "displayName": "Sidebar Raised (dark)",
+        "tonalRamp": [
+          "oklch(15% 0.010 267)",
+          "oklch(26% 0.014 267)",
+          "oklch(38% 0.014 267)",
+          "oklch(49% 0.014 267)",
+          "oklch(61% 0.014 267)",
+          "oklch(72% 0.014 267)",
+          "oklch(84% 0.011 267)",
+          "oklch(95% 0.004 267)"
+        ],
+        "cssVar": "--side-2 (dark)"
+      },
+      "done-green-dark": {
+        "role": "tertiary",
+        "displayName": "Done Green (dark)",
+        "tonalRamp": [
+          "oklch(15% 0.145 152)",
+          "oklch(26% 0.182 152)",
+          "oklch(38% 0.182 152)",
+          "oklch(49% 0.182 152)",
+          "oklch(61% 0.182 152)",
+          "oklch(72% 0.182 152)",
+          "oklch(84% 0.156 152)",
+          "oklch(95% 0.054 152)"
+        ],
+        "cssVar": "--done (dark)"
+      },
+      "running-amber-dark": {
+        "role": "tertiary",
+        "displayName": "Running Amber (dark)",
+        "tonalRamp": [
+          "oklch(15% 0.154 84)",
+          "oklch(26% 0.164 84)",
+          "oklch(38% 0.164 84)",
+          "oklch(49% 0.164 84)",
+          "oklch(61% 0.164 84)",
+          "oklch(72% 0.164 84)",
+          "oklch(84% 0.164 84)",
+          "oklch(95% 0.057 84)"
+        ],
+        "cssVar": "--run (dark)"
+      },
+      "running-wash-dark": {
+        "role": "tertiary",
+        "displayName": "Running Wash (dark)",
+        "tonalRamp": [
+          "oklch(15% 0.154 84)",
+          "oklch(26% 0.164 84)",
+          "oklch(38% 0.164 84)",
+          "oklch(49% 0.164 84)",
+          "oklch(61% 0.164 84)",
+          "oklch(72% 0.164 84)",
+          "oklch(84% 0.164 84)",
+          "oklch(95% 0.057 84)"
+        ],
+        "cssVar": "--run-wash (dark)"
+      },
+      "stopped-red-dark": {
+        "role": "tertiary",
+        "displayName": "Stopped Red (dark)",
+        "tonalRamp": [
+          "oklch(15% 0.103 22)",
+          "oklch(26% 0.157 22)",
+          "oklch(38% 0.166 22)",
+          "oklch(49% 0.166 22)",
+          "oklch(61% 0.166 22)",
+          "oklch(72% 0.162 22)",
+          "oklch(84% 0.111 22)",
+          "oklch(95% 0.038 22)"
+        ],
+        "cssVar": "--bad (dark)"
+      },
+      "stopped-wash-dark": {
+        "role": "tertiary",
+        "displayName": "Stopped Wash (dark)",
+        "tonalRamp": [
+          "oklch(15% 0.103 22)",
+          "oklch(26% 0.157 22)",
+          "oklch(38% 0.166 22)",
+          "oklch(49% 0.166 22)",
+          "oklch(61% 0.166 22)",
+          "oklch(72% 0.162 22)",
+          "oklch(84% 0.111 22)",
+          "oklch(95% 0.038 22)"
+        ],
+        "cssVar": "--bad-wash (dark)"
+      },
+      "speaker-blue-dark": {
+        "role": "secondary",
+        "displayName": "Speaker Blue (dark)",
+        "tonalRamp": [
+          "oklch(15% 0.090 258)",
+          "oklch(26% 0.137 258)",
+          "oklch(38% 0.140 258)",
+          "oklch(49% 0.140 258)",
+          "oklch(61% 0.140 258)",
+          "oklch(72% 0.140 258)",
+          "oklch(84% 0.097 258)",
+          "oklch(95% 0.034 258)"
+        ],
+        "cssVar": "--ch1 (dark)"
+      },
+      "speaker-pink-dark": {
+        "role": "secondary",
+        "displayName": "Speaker Pink (dark)",
+        "tonalRamp": [
+          "oklch(15% 0.112 350)",
+          "oklch(26% 0.171 350)",
+          "oklch(38% 0.175 350)",
+          "oklch(49% 0.175 350)",
+          "oklch(61% 0.175 350)",
+          "oklch(72% 0.175 350)",
+          "oklch(84% 0.121 350)",
+          "oklch(95% 0.042 350)"
+        ],
+        "cssVar": "--ch2 (dark)"
+      },
+      "speaker-amber-dark": {
+        "role": "secondary",
+        "displayName": "Speaker Amber (dark)",
+        "tonalRamp": [
+          "oklch(15% 0.154 84)",
+          "oklch(26% 0.164 84)",
+          "oklch(38% 0.164 84)",
+          "oklch(49% 0.164 84)",
+          "oklch(61% 0.164 84)",
+          "oklch(72% 0.164 84)",
+          "oklch(84% 0.164 84)",
+          "oklch(95% 0.057 84)"
+        ],
+        "cssVar": "--ch3 (dark)"
+      },
+      "speaker-green-dark": {
+        "role": "secondary",
+        "displayName": "Speaker Green (dark)",
+        "tonalRamp": [
+          "oklch(15% 0.112 163)",
+          "oklch(26% 0.153 163)",
+          "oklch(38% 0.153 163)",
+          "oklch(49% 0.153 163)",
+          "oklch(61% 0.153 163)",
+          "oklch(72% 0.153 163)",
+          "oklch(84% 0.120 163)",
+          "oklch(95% 0.042 163)"
+        ],
+        "cssVar": "--ch4 (dark)"
+      },
+      "speaker-teal-dark": {
+        "role": "secondary",
+        "displayName": "Speaker Teal (dark)",
+        "tonalRamp": [
+          "oklch(15% 0.106 212)",
+          "oklch(26% 0.134 212)",
+          "oklch(38% 0.134 212)",
+          "oklch(49% 0.134 212)",
+          "oklch(61% 0.134 212)",
+          "oklch(72% 0.134 212)",
+          "oklch(84% 0.114 212)",
+          "oklch(95% 0.039 212)"
+        ],
+        "cssVar": "--ch5 (dark)"
+      },
+      "skeleton-dark": {
+        "role": "neutral",
+        "displayName": "Skeleton (dark)",
+        "tonalRamp": [
+          "oklch(15% 0.010 267)",
+          "oklch(26% 0.014 267)",
+          "oklch(38% 0.014 267)",
+          "oklch(49% 0.014 267)",
+          "oklch(61% 0.014 267)",
+          "oklch(72% 0.014 267)",
+          "oklch(84% 0.011 267)",
+          "oklch(95% 0.004 267)"
+        ],
+        "cssVar": "--sk (dark)"
+      },
+      "skeleton-sheen-dark": {
+        "role": "neutral",
+        "displayName": "Skeleton Sheen (dark)",
+        "tonalRamp": [
+          "oklch(15% 0.011 266)",
+          "oklch(26% 0.017 266)",
+          "oklch(38% 0.018 266)",
+          "oklch(49% 0.018 266)",
+          "oklch(61% 0.018 266)",
+          "oklch(72% 0.017 266)",
+          "oklch(84% 0.012 266)",
+          "oklch(95% 0.004 266)"
+        ],
+        "cssVar": "--sk-hi (dark)"
+      },
+      "cover-indigo": {
+        "role": "tertiary",
+        "displayName": "Cover Indigo",
+        "tonalRamp": [
+          "oklch(15% 0.075 279)",
+          "oklch(26% 0.114 279)",
+          "oklch(38% 0.135 279)",
+          "oklch(49% 0.135 279)",
+          "oklch(61% 0.135 279)",
+          "oklch(72% 0.118 279)",
+          "oklch(84% 0.081 279)",
+          "oklch(95% 0.028 279)"
+        ],
+        "source": "app.js COVERS"
+      },
+      "cover-pine": {
+        "role": "tertiary",
+        "displayName": "Cover Pine",
+        "tonalRamp": [
+          "oklch(15% 0.037 190)",
+          "oklch(26% 0.056 190)",
+          "oklch(38% 0.068 190)",
+          "oklch(49% 0.071 190)",
+          "oklch(61% 0.069 190)",
+          "oklch(72% 0.058 190)",
+          "oklch(84% 0.040 190)",
+          "oklch(95% 0.014 190)"
+        ],
+        "source": "app.js COVERS"
+      },
+      "cover-wine": {
+        "role": "tertiary",
+        "displayName": "Cover Wine",
+        "tonalRamp": [
+          "oklch(15% 0.087 4)",
+          "oklch(26% 0.133 4)",
+          "oklch(38% 0.161 4)",
+          "oklch(49% 0.170 4)",
+          "oklch(61% 0.163 4)",
+          "oklch(72% 0.137 4)",
+          "oklch(84% 0.094 4)",
+          "oklch(95% 0.032 4)"
+        ],
+        "source": "app.js COVERS"
+      },
+      "cover-navy": {
+        "role": "tertiary",
+        "displayName": "Cover Navy",
+        "tonalRamp": [
+          "oklch(15% 0.075 266)",
+          "oklch(26% 0.114 266)",
+          "oklch(38% 0.138 266)",
+          "oklch(49% 0.138 266)",
+          "oklch(61% 0.138 266)",
+          "oklch(72% 0.118 266)",
+          "oklch(84% 0.080 266)",
+          "oklch(95% 0.028 266)"
+        ],
+        "source": "app.js COVERS"
+      },
+      "cover-rust": {
+        "role": "tertiary",
+        "displayName": "Cover Rust",
+        "tonalRamp": [
+          "oklch(15% 0.064 46)",
+          "oklch(26% 0.097 46)",
+          "oklch(38% 0.118 46)",
+          "oklch(49% 0.125 46)",
+          "oklch(61% 0.119 46)",
+          "oklch(72% 0.101 46)",
+          "oklch(84% 0.069 46)",
+          "oklch(95% 0.024 46)"
+        ],
+        "source": "app.js COVERS"
+      },
+      "cover-plum": {
+        "role": "tertiary",
+        "displayName": "Cover Plum",
+        "tonalRamp": [
+          "oklch(15% 0.097 294)",
+          "oklch(26% 0.147 294)",
+          "oklch(38% 0.178 294)",
+          "oklch(49% 0.178 294)",
+          "oklch(61% 0.178 294)",
+          "oklch(72% 0.152 294)",
+          "oklch(84% 0.104 294)",
+          "oklch(95% 0.036 294)"
+        ],
+        "source": "app.js COVERS"
+      },
+      "cover-deep-cyan": {
+        "role": "tertiary",
+        "displayName": "Cover Deep Cyan",
+        "tonalRamp": [
+          "oklch(15% 0.040 224)",
+          "oklch(26% 0.061 224)",
+          "oklch(38% 0.073 224)",
+          "oklch(49% 0.077 224)",
+          "oklch(61% 0.074 224)",
+          "oklch(72% 0.063 224)",
+          "oklch(84% 0.043 224)",
+          "oklch(95% 0.015 224)"
+        ],
+        "source": "app.js COVERS"
+      },
+      "cover-graphite": {
+        "role": "tertiary",
+        "displayName": "Cover Graphite",
+        "tonalRamp": [
+          "oklch(15% 0.019 257)",
+          "oklch(26% 0.029 257)",
+          "oklch(38% 0.030 257)",
+          "oklch(49% 0.030 257)",
+          "oklch(61% 0.030 257)",
+          "oklch(72% 0.030 257)",
+          "oklch(84% 0.020 257)",
+          "oklch(95% 0.007 257)"
+        ],
+        "source": "app.js COVERS"
+      },
+      "on-cover": {
+        "role": "tertiary",
+        "displayName": "On Cover",
+        "tonalRamp": [
+          "oklch(15% 0.000 90)",
+          "oklch(26% 0.000 90)",
+          "oklch(38% 0.000 90)",
+          "oklch(49% 0.000 90)",
+          "oklch(61% 0.000 90)",
+          "oklch(72% 0.000 90)",
+          "oklch(84% 0.000 90)",
+          "oklch(95% 0.000 90)"
+        ]
+      }
+    },
+    "typographyMeta": {
+      "headline": {
+        "displayName": "Headline",
+        "purpose": "Page and episode titles; 23px under 760px."
+      },
+      "headline-native": {
+        "displayName": "Headline (native script)",
+        "purpose": "A title with any non-Latin character."
+      },
+      "cover-title": {
+        "displayName": "Cover Title",
+        "purpose": "Title printed on a generated episode cover; 16px on phones."
+      },
+      "title": {
+        "displayName": "Title",
+        "purpose": "Section headings (h2)."
+      },
+      "subtitle": {
+        "displayName": "Subtitle",
+        "purpose": "Chapter and minor headings (h3), card titles under covers."
+      },
+      "body": {
+        "displayName": "Body",
+        "purpose": "Default text; prose held to 62-72ch."
+      },
+      "script-line": {
+        "displayName": "Script Line",
+        "purpose": "Editable script lines; transcript lines use 15px/1.6."
+      },
+      "numeral": {
+        "displayName": "Numeral",
+        "purpose": "Script stats and the speaker-count stepper, tabular."
+      },
+      "label": {
+        "displayName": "Label",
+        "purpose": "Buttons, segmented options, step names."
+      },
+      "caption": {
+        "displayName": "Caption",
+        "purpose": "Hints, field labels, activity log, meta."
+      },
+      "micro": {
+        "displayName": "Micro",
+        "purpose": "Tags, fact counts, chip numbers; badges at 11px."
+      }
+    },
+    "shadows": [
+      {
+        "name": "rest-lift",
+        "value": "0 1px 2px rgba(16, 24, 40, .06), 0 1px 3px rgba(16, 24, 40, .08)",
+        "dark": "0 1px 2px rgba(0, 0, 0, .4)",
+        "cssVar": "--shadow-1",
+        "purpose": "Covers, cover thumbnail, selected segmented option, current step tab, scrubber thumb."
+      },
+      {
+        "name": "hover-sticky",
+        "value": "0 2px 4px rgba(16, 24, 40, .06), 0 8px 20px rgba(16, 24, 40, .08)",
+        "dark": "0 2px 6px rgba(0, 0, 0, .4), 0 10px 24px rgba(0, 0, 0, .35)",
+        "cssVar": "--shadow-2",
+        "purpose": "A hovered cover (lifted 3px) and the sticky player."
+      },
+      {
+        "name": "float",
+        "value": "0 12px 32px rgba(16, 24, 40, .18)",
+        "dark": "0 16px 40px rgba(0, 0, 0, .55)",
+        "cssVar": "--shadow-3",
+        "purpose": "Toast and the cover-to-episode morph card."
+      },
+      {
+        "name": "button-hairline",
+        "value": "0 1px 1px rgba(16, 24, 40, .04)",
+        "purpose": "Default buttons at rest."
+      },
+      {
+        "name": "violet-glow",
+        "value": "0 1px 2px color-mix(in srgb, var(--accent-strong) 30%, transparent)",
+        "purpose": "Primary button."
+      },
+      {
+        "name": "violet-glow-play",
+        "value": "0 2px 6px color-mix(in srgb, var(--accent-strong) 35%, transparent)",
+        "purpose": "Main play button."
+      },
+      {
+        "name": "focus-halo",
+        "value": "0 0 0 3px var(--accent-wash)",
+        "purpose": "Focused text fields (border turns violet)."
+      },
+      {
+        "name": "focus-ring",
+        "value": "outline: 2px solid var(--accent); outline-offset: 2px",
+        "purpose": "Keyboard focus on everything that is not a field."
+      }
+    ],
+    "motion": [
+      {
+        "name": "ease",
+        "value": "cubic-bezier(.2, .8, .2, 1)",
+        "cssVar": "--ease",
+        "purpose": "Settles quickly: almost every state change."
+      },
+      {
+        "name": "ease-in",
+        "value": "cubic-bezier(.4, 0, 1, 1)",
+        "cssVar": "--ease-in",
+        "purpose": "Leaving: the outgoing desktop page."
+      },
+      {
+        "name": "ease-pager",
+        "value": "cubic-bezier(.2, 0, 0, 1)",
+        "purpose": "Phone tab pager slides."
+      },
+      {
+        "name": "ease-morph",
+        "value": "cubic-bezier(.3, 0, .2, 1)",
+        "purpose": "Cover-to-episode morph group."
+      },
+      {
+        "name": "press",
+        "value": "100ms",
+        "purpose": "Press scale: .97 buttons, .98 language tiles, .92 play buttons."
+      },
+      {
+        "name": "hover",
+        "value": "150ms",
+        "purpose": "Hover, colour and border changes."
+      },
+      {
+        "name": "select",
+        "value": "200ms",
+        "purpose": "Tab, step-tab, chapter-chip and phone-tab-pill changes; phone page slide."
+      },
+      {
+        "name": "playing-row",
+        "value": "250ms",
+        "purpose": "Background of the transcript line under the playhead."
+      },
+      {
+        "name": "arrive",
+        "value": "350ms; translateY(6px) + fade",
+        "purpose": "Items that appear while a job runs (not on first paint)."
+      },
+      {
+        "name": "rise",
+        "value": "250ms; translateY(4px) + fade",
+        "purpose": "The job pill appearing."
+      },
+      {
+        "name": "pop",
+        "value": "300ms; scale(.4) + fade",
+        "purpose": "Count badge and step check mark."
+      },
+      {
+        "name": "fill",
+        "value": "600ms",
+        "purpose": "Progress and speaker-share bar widths."
+      },
+      {
+        "name": "page-axis-desktop",
+        "value": "out 140ms ease-in; in 260ms after 60ms ease; 28px shift + fade",
+        "purpose": "Shared-axis page change beside the sidebar, direction by tab order."
+      },
+      {
+        "name": "page-pager-phone",
+        "value": "200ms; 100vw slide",
+        "purpose": "Tabs slide like an app pager."
+      },
+      {
+        "name": "cover-morph",
+        "value": "420ms group; old fades 160ms; new fades 260ms after 140ms (close: 200ms after 220ms)",
+        "purpose": "A cover grows into its episode and shrinks back."
+      },
+      {
+        "name": "toast",
+        "value": "200ms opacity, 250ms 10px slide",
+        "purpose": "Toast in and out."
+      },
+      {
+        "name": "ping",
+        "value": "1.4s infinite",
+        "purpose": "Running dot: an expanding amber ring."
+      },
+      {
+        "name": "busy",
+        "value": "1.3s infinite",
+        "purpose": "Indeterminate progress sweep when a step's fraction is unknown."
+      },
+      {
+        "name": "shimmer",
+        "value": "1.6s linear infinite",
+        "purpose": "Page-fixed skeleton sheen, phase-synced across re-renders."
+      },
+      {
+        "name": "reduced-motion",
+        "value": "prefers-reduced-motion: reduce",
+        "purpose": "Keyframes off; indeterminate bar static full width at 35% opacity; transitions 0s; view transitions skipped; transcript follow jumps."
+      }
+    ],
+    "breakpoints": [
+      {
+        "name": "phone",
+        "value": "760px",
+        "purpose": "max-width: phone padding, 2x2 step bar, collapsed line grids."
+      },
+      {
+        "name": "shell",
+        "value": "900px",
+        "purpose": "min-width: dark sidebar; below it the top bar and bottom tab bar."
+      },
+      {
+        "name": "activity",
+        "value": "1180px",
+        "purpose": "max-width: the activity column folds under the stage."
+      }
+    ]
+  },
+  "components": [
+    {
+      "name": "Primary Button",
+      "kind": "button",
+      "refersTo": "button-primary",
+      "description": "The one main action of an area: violet fill, white label, violet glow.",
+      "html": "<button class=\"ds-btn ds-btn-primary\">Make the whole episode</button>",
+      "css": ".ds-btn { display: inline-flex; align-items: center; justify-content: center; gap: 6px; min-height: 36px; padding: 0 14px; border: 1px solid var(--line-strong, #CDD2DA); border-radius: 8px; background: var(--panel, #FFFFFF); color: var(--ink, #14171F); font: 550 14px/1 Inter, system-ui, sans-serif; cursor: pointer; box-shadow: 0 1px 1px rgba(16, 24, 40, .04); transition: background .15s var(--ease, cubic-bezier(.2, .8, .2, 1)), border-color .15s var(--ease, cubic-bezier(.2, .8, .2, 1)), color .15s var(--ease, cubic-bezier(.2, .8, .2, 1)), transform .1s var(--ease, cubic-bezier(.2, .8, .2, 1)); } .ds-btn:active { transform: scale(.97); } .ds-btn:focus-visible { outline: 2px solid var(--accent, #5B3DF5); outline-offset: 2px; } .ds-btn-primary { background: var(--accent-strong, #5B3DF5); border-color: var(--accent-strong, #5B3DF5); color: var(--on-accent, #FFFFFF); box-shadow: 0 1px 2px color-mix(in srgb, var(--accent-strong, #5B3DF5) 30%, transparent); } .ds-btn-primary:hover { background: var(--accent-press, #4E34D3); border-color: transparent; }"
+    },
+    {
+      "name": "Secondary Button",
+      "kind": "button",
+      "refersTo": "button-secondary",
+      "description": "The alternative path beside a primary: white with a control edge.",
+      "html": "<button class=\"ds-btn2\">Plan first, then decide</button>",
+      "css": ".ds-btn2 { display: inline-flex; align-items: center; min-height: 36px; padding: 0 14px; border: 1px solid var(--line-strong, #CDD2DA); border-radius: 8px; background: var(--panel, #FFFFFF); color: var(--ink, #14171F); font: 550 14px/1 Inter, system-ui, sans-serif; cursor: pointer; box-shadow: 0 1px 1px rgba(16, 24, 40, .04); transition: background .15s var(--ease, cubic-bezier(.2, .8, .2, 1)), transform .1s var(--ease, cubic-bezier(.2, .8, .2, 1)); } .ds-btn2:hover { background: var(--sunken, #EEF0F3); } .ds-btn2:active { transform: scale(.97); } .ds-btn2:focus-visible { outline: 2px solid var(--accent, #5B3DF5); outline-offset: 2px; }"
+    },
+    {
+      "name": "Quiet Button",
+      "kind": "button",
+      "refersTo": "button-quiet",
+      "description": "Header and per-line tools: transparent, muted, with an optional 16px line icon; Delete washes red on hover.",
+      "html": "<button class=\"ds-quiet\"><svg viewBox=\"0 0 16 16\" aria-hidden=\"true\"><rect x=\"5\" y=\"5\" width=\"8.5\" height=\"8.5\" rx=\"1.5\"/><path d=\"M11 5V3.5A1.5 1.5 0 0 0 9.5 2h-6A1.5 1.5 0 0 0 2 3.5v6A1.5 1.5 0 0 0 3.5 11H5\"/></svg>Duplicate</button> <button class=\"ds-quiet ds-danger\"><svg viewBox=\"0 0 16 16\" aria-hidden=\"true\"><path d=\"M2.5 4h11M6.5 4V2.5h3V4M4 4l.7 9.5h6.6L12 4\"/></svg>Delete</button>",
+      "css": ".ds-quiet { display: inline-flex; align-items: center; gap: 6px; min-height: 36px; padding: 0 10px; border: 1px solid transparent; border-radius: 8px; background: transparent; color: var(--muted, #5B6270); font: 550 14px/1 Inter, system-ui, sans-serif; cursor: pointer; transition: background .15s var(--ease, cubic-bezier(.2, .8, .2, 1)), color .15s var(--ease, cubic-bezier(.2, .8, .2, 1)); } .ds-quiet svg { width: 16px; height: 16px; fill: none; stroke: currentColor; stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; } .ds-quiet:hover { background: var(--sunken, #EEF0F3); color: var(--ink, #14171F); } .ds-danger:hover { background: var(--bad-wash, #FEE2E2); color: var(--bad, #B91C1C); } .ds-quiet:focus-visible { outline: 2px solid var(--accent, #5B3DF5); outline-offset: 2px; }"
+    },
+    {
+      "name": "Text Field",
+      "kind": "input",
+      "refersTo": "input",
+      "description": "38px field with a control edge; focus turns the border violet with a 3px wash halo.",
+      "html": "<label class=\"ds-f\"><span>Topic</span><input class=\"ds-input\" type=\"text\" placeholder=\"How UPI actually works\"></label>",
+      "css": ".ds-f { display: flex; flex-direction: column; gap: 6px; font: 13px/1.45 Inter, system-ui, sans-serif; color: var(--muted, #5B6270); } .ds-f > span { font-weight: 550; color: var(--ink, #14171F); } .ds-input { width: 100%; min-height: 38px; padding: 7px 11px; border: 1px solid var(--line-strong, #CDD2DA); border-radius: 8px; background: var(--panel, #FFFFFF); color: var(--ink, #14171F); font: 15px/1.55 Inter, system-ui, sans-serif; caret-color: var(--accent, #5B3DF5); transition: border-color .15s var(--ease, cubic-bezier(.2, .8, .2, 1)), box-shadow .15s var(--ease, cubic-bezier(.2, .8, .2, 1)); } .ds-input::placeholder { color: var(--muted, #5B6270); } .ds-input:focus { outline: none; border-color: var(--accent, #5B3DF5); box-shadow: 0 0 0 3px var(--accent-wash, #F1EEFF); }"
+    },
+    {
+      "name": "Segmented Control",
+      "kind": "custom",
+      "refersTo": "segmented-control",
+      "description": "Options in a sunken track; the selected one lifts to a white panel.",
+      "html": "<div class=\"ds-seg\"><label><input type=\"radio\" name=\"ds-mix\"><span>Light</span></label><label><input type=\"radio\" name=\"ds-mix\" checked><span>Medium</span></label><label><input type=\"radio\" name=\"ds-mix\"><span>Heavy</span></label></div>",
+      "css": ".ds-seg { display: inline-flex; gap: 2px; padding: 3px; border-radius: 10px; background: var(--sunken, #EEF0F3); font: 550 14px/1.55 Inter, system-ui, sans-serif; } .ds-seg label { position: relative; } .ds-seg input { position: absolute; opacity: 0; } .ds-seg span { display: block; padding: 6px 14px; border-radius: 7px; cursor: pointer; color: var(--muted, #5B6270); transition: background .15s var(--ease, cubic-bezier(.2, .8, .2, 1)), color .15s var(--ease, cubic-bezier(.2, .8, .2, 1)); } .ds-seg span:hover { color: var(--ink, #14171F); } .ds-seg input:checked + span { background: var(--panel, #FFFFFF); color: var(--ink, #14171F); box-shadow: var(--shadow-1, 0 1px 2px rgba(16, 24, 40, .06), 0 1px 3px rgba(16, 24, 40, .08)); } .ds-seg input:focus-visible + span { outline: 2px solid var(--accent, #5B3DF5); outline-offset: -2px; }"
+    },
+    {
+      "name": "Sidebar Navigation",
+      "kind": "nav",
+      "refersTo": "sidebar-item-current",
+      "description": "The desktop sidebar: dark ground, 40px rows, current row raised, a violet count badge for running jobs.",
+      "html": "<nav class=\"ds-side\"><a href=\"#\">New</a><a href=\"#\" aria-current=\"page\">Episodes<span class=\"ds-badge\">2</span></a><a href=\"#\">Voices</a><a href=\"#\">Settings</a></nav>",
+      "css": ".ds-side { display: flex; flex-direction: column; gap: 2px; width: 240px; padding: 12px; background: var(--side, #16181D); color: var(--side-muted, #AEB4C0); font: 500 14px/1 Inter, system-ui, sans-serif; } .ds-side a { position: relative; display: flex; align-items: center; min-height: 40px; padding: 0 10px; border-radius: 8px; color: inherit; text-decoration: none; transition: background .15s var(--ease, cubic-bezier(.2, .8, .2, 1)), color .15s var(--ease, cubic-bezier(.2, .8, .2, 1)); } .ds-side a:hover, .ds-side a[aria-current=page] { background: var(--side-2, #23262E); color: var(--side-ink, #F2F3F5); } .ds-side a[aria-current=page] { font-weight: 600; } .ds-side a:focus-visible { outline: 2px solid var(--accent, #5B3DF5); outline-offset: 2px; } .ds-badge { position: absolute; right: 10px; display: inline-grid; place-items: center; min-width: 18px; height: 18px; padding: 0 5px; border-radius: 9px; background: var(--accent-strong, #5B3DF5); color: var(--on-accent, #FFFFFF); font: 650 11px/1 Inter, system-ui, sans-serif; }"
+    },
+    {
+      "name": "Step Bar",
+      "kind": "nav",
+      "refersTo": "step-tab-current",
+      "description": "An episode's four steps in a sunken track; done steps show a green check, the current one is raised, a live one carries amber progress.",
+      "html": "<nav class=\"ds-steps\"><a href=\"#\"><span class=\"l\"><svg viewBox=\"0 0 16 16\"><path d=\"M3 8.5l3.2 3L13 4.5\"/></svg>Plan</span><small>7 segments</small></a><a href=\"#\"><span class=\"l\"><svg viewBox=\"0 0 16 16\"><path d=\"M3 8.5l3.2 3L13 4.5\"/></svg>Research</span><small>18 facts</small></a><a href=\"#\" aria-current=\"page\"><span class=\"l\"><b>3</b>Script</span><small>being written</small><span class=\"prog\"><i style=\"width:57%\"></i></span></a><a href=\"#\"><span class=\"l\"><b>4</b>Audio</span><small>&nbsp;</small></a></nav>",
+      "css": ".ds-steps { display: grid; grid-template-columns: repeat(4, minmax(130px, 1fr)); gap: 4px; padding: 4px; border-radius: 12px; background: var(--sunken, #EEF0F3); font: 14px/1.55 Inter, system-ui, sans-serif; } .ds-steps a { position: relative; display: flex; flex-direction: column; gap: 1px; padding: 9px 14px 10px; border-radius: 9px; color: var(--muted, #5B6270); text-decoration: none; overflow: hidden; transition: background .2s var(--ease, cubic-bezier(.2, .8, .2, 1)), color .2s var(--ease, cubic-bezier(.2, .8, .2, 1)), box-shadow .2s var(--ease, cubic-bezier(.2, .8, .2, 1)); } .ds-steps a:hover { color: var(--ink, #14171F); } .ds-steps a[aria-current=page] { background: var(--panel, #FFFFFF); color: var(--ink, #14171F); box-shadow: var(--shadow-1, 0 1px 2px rgba(16, 24, 40, .06), 0 1px 3px rgba(16, 24, 40, .08)), inset 0 0 0 1px var(--line-strong, #CDD2DA); } .ds-steps .l { display: flex; align-items: center; gap: 8px; font-weight: 600; color: var(--ink, #14171F); } .ds-steps .l b { display: inline-grid; place-items: center; width: 18px; height: 18px; border-radius: 50%; font-size: 11px; box-shadow: inset 0 0 0 1.5px currentColor; } .ds-steps .l svg { width: 18px; height: 18px; padding: 3px; border-radius: 50%; background: var(--done, #15803D); fill: none; stroke: var(--panel, #FFFFFF); stroke-width: 2.6; stroke-linecap: round; stroke-linejoin: round; } .ds-steps small { font-size: 12.5px; color: var(--muted, #5B6270); padding-left: 26px; } .ds-steps .prog { position: absolute; left: 10px; right: 10px; bottom: 4px; height: 3px; border-radius: 2px; overflow: hidden; background: color-mix(in srgb, var(--run, #B45309) 18%, transparent); } .ds-steps .prog i { display: block; height: 100%; background: var(--run, #B45309); transition: width .6s var(--ease, cubic-bezier(.2, .8, .2, 1)); }"
+    },
+    {
+      "name": "Chapter Chip",
+      "kind": "chip",
+      "refersTo": "chapter-chip",
+      "description": "Jump-to chapters under the player; the current chapter takes the violet wash.",
+      "html": "<div class=\"ds-chaps\"><button class=\"now\"><b>2</b><span>The Outsider's Entry</span><time>0:46</time></button><button><b>3</b><span>The Anti-Hero Pivot</span><time>2:16</time></button></div>",
+      "css": ".ds-chaps { display: flex; gap: 6px; } .ds-chaps button { display: flex; align-items: baseline; gap: 7px; min-height: 32px; padding: 5px 12px; border: 1px solid var(--line, #E3E6EB); border-radius: 16px; background: var(--panel, #FFFFFF); color: var(--ink, #14171F); font: 13px/1.4 Inter, system-ui, sans-serif; white-space: nowrap; cursor: pointer; transition: background .2s var(--ease, cubic-bezier(.2, .8, .2, 1)), border-color .2s var(--ease, cubic-bezier(.2, .8, .2, 1)), color .2s var(--ease, cubic-bezier(.2, .8, .2, 1)); } .ds-chaps button:hover { border-color: var(--line-strong, #CDD2DA); background: var(--sunken, #EEF0F3); } .ds-chaps b { font-weight: 650; color: var(--muted, #5B6270); font-variant-numeric: tabular-nums; } .ds-chaps time { color: var(--muted, #5B6270); font-variant-numeric: tabular-nums; } .ds-chaps button.now { background: var(--accent-wash, #F1EEFF); border-color: var(--accent-line, #D9D1FF); color: var(--accent, #5B3DF5); } .ds-chaps button.now b, .ds-chaps button.now time { color: inherit; } .ds-chaps button:focus-visible { outline: 2px solid var(--accent, #5B3DF5); outline-offset: 2px; }"
+    },
+    {
+      "name": "Job Pill",
+      "kind": "custom",
+      "refersTo": "job-pill-running",
+      "description": "What the agents are doing now: amber with a pinging dot while running, red when stopped.",
+      "html": "<div class=\"ds-lamp on\"><i></i>Writing the script…</div> <div class=\"ds-lamp err\"><i></i>Stopped: TTS server timed out</div>",
+      "css": ".ds-lamp { display: inline-flex; align-items: center; gap: 8px; min-height: 30px; padding: 0 12px 0 10px; border-radius: 15px; background: var(--sunken, #EEF0F3); font: 550 13px/1 Inter, system-ui, sans-serif; } .ds-lamp i { width: 8px; height: 8px; border-radius: 50%; background: var(--muted, #5B6270); } .ds-lamp.on { background: var(--run-wash, #FEF3C7); color: var(--run, #B45309); } .ds-lamp.on i { background: var(--run, #B45309); animation: ds-ping 1.4s var(--ease, cubic-bezier(.2, .8, .2, 1)) infinite; } .ds-lamp.err { background: var(--bad-wash, #FEE2E2); color: var(--bad, #B91C1C); } .ds-lamp.err i { background: var(--bad, #B91C1C); } @keyframes ds-ping { 0% { box-shadow: 0 0 0 0 color-mix(in srgb, var(--run, #B45309) 55%, transparent); } 80%, 100% { box-shadow: 0 0 0 7px transparent; } } @media (prefers-reduced-motion: reduce) { .ds-lamp.on i { animation: none; } }"
+    },
+    {
+      "name": "Episode Cover",
+      "kind": "card",
+      "refersTo": "episode-cover",
+      "description": "A square from the cover palette (picked by id hash): language and speaker count, one row of speech blocks per speaker, the title; lifts on hover.",
+      "html": "<a class=\"ds-cover-link\" href=\"#\"><span class=\"ds-cover\"><span class=\"top\"><span lang=\"hi\">हिन्दी</span><span>2 speakers</span></span><span class=\"lanes\"><span><i style=\"left:6%;width:22%\"></i><i style=\"left:36%;width:14%\"></i><i style=\"left:62%;width:26%\"></i></span><span><i style=\"left:12%;width:18%\"></i><i style=\"left:44%;width:28%\"></i></span></span><span class=\"t\" lang=\"hi\">शाहरुख खान: शून्य से शिखर तक</span></span><span class=\"state\">Audio ready, about 10 minutes</span></a>",
+      "css": ".ds-cover-link { display: flex; flex-direction: column; gap: 6px; width: 196px; text-decoration: none; font-family: Inter, 'Noto Sans Devanagari', system-ui, sans-serif; } .ds-cover { aspect-ratio: 1; display: flex; flex-direction: column; justify-content: space-between; padding: 14px 16px; border-radius: 12px; background: #312E81; color: #FFFFFF; overflow: hidden; box-shadow: var(--shadow-1, 0 1px 2px rgba(16, 24, 40, .06), 0 1px 3px rgba(16, 24, 40, .08)); transition: transform .2s var(--ease, cubic-bezier(.2, .8, .2, 1)), box-shadow .2s var(--ease, cubic-bezier(.2, .8, .2, 1)); } .ds-cover-link:hover .ds-cover { transform: translateY(-3px); box-shadow: var(--shadow-2, 0 2px 4px rgba(16, 24, 40, .06), 0 8px 20px rgba(16, 24, 40, .08)); } .ds-cover .top { display: flex; justify-content: space-between; font-size: 13px; font-weight: 550; opacity: .92; } .ds-cover .lanes { display: flex; flex-direction: column; gap: 7px; } .ds-cover .lanes > span { position: relative; display: block; height: 7px; } .ds-cover .lanes i { position: absolute; top: 0; height: 7px; border-radius: 4px; background: currentColor; opacity: .32; } .ds-cover .t { font-size: 19px; font-weight: 650; line-height: 1.25; } .ds-cover-link .state { font-size: 13px; color: var(--muted, #5B6270); } .ds-cover-link:focus-visible { outline: 2px solid var(--accent, #5B3DF5); outline-offset: 2px; border-radius: 12px; }"
+    }
+  ],
+  "narrative": {
+    "northStar": "The Calm Control Room",
+    "overview": "Podcast Studio is the category standard played straight: the familiar, polished creator-tool layout (a dark sidebar beside a light workspace, a segmented step bar, a sticky player) held to Riverside's level of finish. Nothing in it is decorative. The pipeline and the audio are the content, and the interface's job is to make their state readable at a glance by someone who started a job, left, and came back. Precision, state colour and motion carry the identity; there is no motif, texture, illustration or quirk.\n\nDensity is that of a working tool, not a landing page: 15px body type, 36px controls, hairline-bordered white panels on a cool grey ground, and a narrow type ramp (11px to 26px) whose hierarchy comes mostly from weight. Violet appears only where something is primary, current or playing. Each speaker owns one channel colour across every screen, so who says what reads before a word is read. Indian scripts are first-class: one font stack renders Latin and nine Indic scripts in the same line, so code-mixed speech reads as one voice.\n\nBoth themes are full citizens. Dark is not an inversion: the violet splits into a lighter text tone and a deeper fill, state and speaker colours brighten to hold contrast on near-black, and shadows turn black and heavier.",
+    "keyCharacteristics": [
+      "Dark 240px sidebar with running jobs pinned to its foot; light workspace; app-style bottom tab bar on phones.",
+      "One violet accent, three state colours, five speaker channels; everything else is neutral.",
+      "Inter plus Noto Sans per Indian script in a single stack, tabular numerals for every time and count.",
+      "Flat hairline panels; shadows only for lift, stickiness and floating layers.",
+      "Motion that reports state: page axis, cover-to-episode morph, live progress, arriving items, a transcript that follows playback."
+    ],
+    "rules": [
+      {
+        "name": "The Motion Shows State Rule",
+        "body": "Every animation answers \"what changed?\": a page moved, a job advanced, an item arrived, a line is playing, a press registered. Nothing moves for ambience.",
+        "section": "motion"
+      },
+      {
+        "name": "The One Violet Rule",
+        "body": "Violet marks only what is primary, current or playing. Progress is amber, completion is green, failure is red; violet never stands in for state and never decorates.",
+        "section": "colors"
+      },
+      {
+        "name": "The Speaker Channel Rule",
+        "body": "A speaker's colour is theirs on every screen, assigned by plan order through `--ch1`..`--ch5`. It colours the speaker's name, mode label, bullet and share bar (and the skeletons that stand in for them), never a line's text or a panel.",
+        "section": "colors"
+      },
+      {
+        "name": "The Both Themes Rule",
+        "body": "Every colour token is defined three times: on `:root`, in the `prefers-color-scheme: dark` block guarded by `:root:not([data-theme=\"light\"])`, and under `:root[data-theme=\"dark\"]`. A token missing from either dark block is a bug.",
+        "section": "colors"
+      },
+      {
+        "name": "The Weight Before Size Rule",
+        "body": "The ramp spans 11–26px; hierarchy comes from the weight steps 400, 500, 550, 600, 650 and 700. Add a weight step before adding a size.",
+        "section": "typography"
+      },
+      {
+        "name": "The One Stack Rule",
+        "body": "All text, Latin or Indic, uses the single `--ui` stack, and user content carries its `lang` attribute. Never set an Indian script in a separate family or a fallback-only face.",
+        "section": "typography"
+      },
+      {
+        "name": "The Tabular Numbers Rule",
+        "body": "Times, durations, counts and stats use tabular numerals (`.num`, `time`, stat figures, chip numbers) so live values do not jitter as they change.",
+        "section": "typography"
+      },
+      {
+        "name": "The Sticky Pair Rule",
+        "body": "On Audio, the player sticks 12px from the top (8px on phones) with a ground-coloured strip above it, and the transcript scrolls under it; the activity column sticks 24px from the top with a fading heading. Apart from the fixed navigation shell, nothing else sticks.",
+        "section": "layout"
+      },
+      {
+        "name": "The Flat Panel Rule",
+        "body": "A resting panel gets a hairline, never a shadow. Shadow means raised by state, stuck in place, or floating; the one exception is the episode cover (and its header thumbnail), which rests at Rest lift as an object to pick up and open.",
+        "section": "elevation"
+      },
+      {
+        "name": "The Concentric Corner Rule",
+        "body": "A shape nested in a track is rounded tighter than the track by about its inset: segmented options 7px inside a 10px track with 3px padding, step tabs 9px inside a 12px bar with 4px padding.",
+        "section": "shapes"
+      }
+    ],
+    "dos": [
+      "**Do** fill violet surfaces with `--accent-strong` and colour violet text and marks with `--accent`; they are the same #5B3DF5 in light and split to #6A4FFF and #A396FF in dark.",
+      "**Do** assign speaker colour with `color(i)` (plan order, wrapping after five) and set it as `--c` on the row, so names, bullets, selectors and skeleton tints all follow it.",
+      "**Do** use amber for running, green for done and red for stopped, each with its wash for pills and boxes.",
+      "**Do** set user content with its `lang` attribute and switch a non-Latin page title to the native headline (0 tracking, 1.35 line height).",
+      "**Do** use tabular numerals for every time, duration, count and stat.",
+      "**Do** give panels a 1px Hairline and no shadow; raise only covers, and what is selected, hovered, sticky or floating.",
+      "**Do** keep controls at 8px corners, rows and tiles at 10px, panels and covers at 12px, the player at 14px, pills at half their height.",
+      "**Do** show a running step's real fraction when it is known and the indeterminate bar when it is not.",
+      "**Do** animate arrivals only for items that appear while a job runs, never on a page's first paint.",
+      "**Do** add every new keyframe animation to the `prefers-reduced-motion` block and every new colour token to both dark blocks.",
+      "**Do** build loading states as skeletons in the shape of the content, on the shared page-fixed sheen."
+    ],
+    "donts": [
+      "**Don't** use violet for progress, success, decoration or emphasis that is not primary, current or playing.",
+      "**Don't** add a second accent hue; the speaker channels and cover palette are identity colours, not accents.",
+      "**Don't** colour a line's text, a card or a panel with its speaker colour; the colour belongs on the name, mode label, bullet and share bar.",
+      "**Don't** set Indian scripts in a different family from Latin text or rely on system fallback for them.",
+      "**Don't** add a motif, texture, illustration or quirk to the workspace; the product's look is the category standard played straight.",
+      "**Don't** animate anything that does not report a change of state, and don't let a motion run without a reduced-motion fallback.",
+      "**Don't** make a new element sticky beyond the player and the activity column."
+    ]
+  }
+}
