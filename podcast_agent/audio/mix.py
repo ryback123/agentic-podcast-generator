@@ -24,9 +24,11 @@ REPLY = [0.1, 0.1, 0.1, 0.1, 0.1, 0.12, 0.19, 0.26, 0.34, 0.4, 0.46,
 LOUDNESS, PEAK = -19, -1.5  # LUFS: -19 for mono plays like the usual podcast -16 for stereo; peaks stay below -1.5 dBFS
 # Overlaps (line modes, see episode.py). ponytail: fixed timings; anchor cut-ins to word timings from the TTS/ASR
 # if they land awkwardly.
-OVERLAP = {"cut": 0.5, "fade": 1.0}  # a cut-in starts this many seconds before the interrupted line ends
-CUT_KEEP = 0.25  # with a direct cut, the interrupted line keeps sounding this long under the cut-in (people yield
-# within 0.15-0.4 s), then stops
+# A cut-in starts this many seconds before the interrupted line ends, so both voices are heard for a moment. (At 0.5
+# and 1.0 s they overlapped for only ~0.1 s that you could hear: a line's last half second is mostly trailing off.)
+OVERLAP = {"cut": 0.8, "fade": 1.5}
+CUT_KEEP = 0.45  # with a direct cut, the interrupted line keeps going this long under the cut-in (people yield within
+# 0.15-0.4 s), then stops
 BACKCHANNEL_AT, BACKCHANNEL_GAIN = 0.4, 0.6  # a backchannel goes in the pause nearest 40% into the line (real ones
 # land 20-65% of the way into the other's turn), a bit quieter
 PAUSE = 0.2  # a quiet stretch this long is a pause (real TTS: 0.2-1 s at clause breaks; ~0.1 s gaps are consonants)
@@ -97,7 +99,7 @@ def mix(clips, gaps=None):
                 fx = fx[:keep]
                 fx[keep - ramp:] *= np.linspace(1, 0, ramp)
             else:
-                fx[k:] *= np.linspace(1, 0, len(fx) - k)
+                fx[k:] *= np.minimum(1, np.linspace(2, 0, len(fx) - k))  # both at full for half the overlap, then out
             placed[floor] = (fs, fx)
             start = fs + k
         elif not placed:

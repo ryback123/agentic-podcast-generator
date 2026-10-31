@@ -84,11 +84,13 @@ def test_filler_goes_in_a_pause_of_the_line_it_reacts_to():
 
 
 def test_cut_ins_stop_or_fade_the_line_they_interrupt():
-    cut = track([(0, "", ONE), (0, "cut", ONE)])
-    assert len(cut) == int(1.5 * R)  # starts 0.5 s before line 1 ends
-    assert abs(cut[int(0.55 * R)] - 0.2) < 1e-6 and abs(cut[int(0.8 * R)] - 0.1) < 1e-6  # both, then line 1 stops
-    fade = track([(0, "", np.full(2 * R, 0.1, np.float32)), (0, "fade", ONE)])  # 2 s line, cut-in 1 s before its end
-    assert len(fade) == 2 * R and abs(fade[int(1.5 * R)] - 0.15) < 1e-3 and abs(fade[-1] - 0.1) < 1e-3  # fades under
+    TWO = np.full(2 * R, 0.1, np.float32)
+    cut = track([(0, "", TWO), (0, "cut", ONE)])
+    assert len(cut) == int(2.2 * R)  # starts 0.8 s before line 1 ends
+    assert abs(cut[int(1.6 * R)] - 0.2) < 1e-6 and abs(cut[int(1.7 * R)] - 0.1) < 1e-6  # both for 0.45 s, then it stops
+    fade = track([(0, "", TWO), (0, "fade", ONE)])  # 2 s line: the cut-in starts halfway, not 1.5 s before its end
+    assert len(fade) == 2 * R and abs(fade[int(1.4 * R)] - 0.2) < 1e-3  # both at full for half the overlap
+    assert abs(fade[int(1.75 * R)] - 0.15) < 1e-3 and abs(fade[-1] - 0.1) < 1e-3  # then line 1 fades out under it
     assert len(track([(0, "", ONE), (0, "fade", ONE)])) == int(1.5 * R)  # short line: cut-in no earlier than halfway
 
 
