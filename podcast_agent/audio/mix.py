@@ -32,6 +32,7 @@ LOUDNESS, PEAK = -19, -1.5  # LUFS: -19 for mono plays like the usual podcast -1
 # together for `together` s. TTS lines often pause right there: Rahul before his last word, Ananya after her first.
 OVERLAP = {"cut": (0.25, 1.0, 0.3), "fade": (0.6, 1.5, 0.5)}
 BREATH = 0.1  # the least time between two things one person says
+BREAKS = ",;:।.!?—–"  # where a line can pause
 BACKCHANNEL_AT, BACKCHANNEL_GAIN = 0.4, 0.6  # a backchannel goes in the pause nearest 40% into the line (real ones
 # land 20-65% of the way into the other's turn), a bit quieter
 FRAME = int(0.02 * RATE)  # speech is told from quiet in 20 ms frames
@@ -83,12 +84,15 @@ def _cut_in(fx, x, mode):
 
 def modes(lines):
     """lines: [(mode, text)] in script order -> the mode each line is mixed with. A cut-in or talk-over overlaps only
-    a line the script cut off with a dash, and a filler plays inside a line only if it is not a question. Otherwise
-    either waits for the line to end like any reply: "हाँ।" answers "…मुश्किल है?" after Rahul has asked it."""
+    a line the script cut off with a dash. A filler plays inside a line only if the line breaks somewhere before its
+    end (a comma, a full stop) and is not a question: it reacts to what has been said so far. Otherwise either waits
+    for the line to end, like any reply: "हाँ।" answers "…मुश्किल है?", "True." follows "बस तमाशा देखती रह जाएगी!"."""
     out, floor = [], ""
     for mode, text in lines:
         end = floor.rstrip()
-        if (mode in OVERLAP and not end.endswith(CUT_OFF)) or (mode == "backchannel" and end.endswith(("?", "？"))):
+        whole = not any(c in BREAKS for c in end.rstrip(BREAKS + "\"'”’ "))  # one phrase: react once it is said
+        if (mode in OVERLAP and not end.endswith(CUT_OFF)) or (
+                mode == "backchannel" and (end.endswith(("?", "？")) or whole)):
             mode = ""
         out.append(mode)
         floor = text if mode != "backchannel" else floor

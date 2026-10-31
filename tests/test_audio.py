@@ -105,6 +105,8 @@ def test_only_a_line_cut_off_with_a_dash_is_talked_over():
              ("cut", "But—"), ("fade", "Wait")]
     assert modes(lines) == ["", "cut", "", "backchannel", "", "fade"]  # a question is answered, not talked over
     assert modes([("", "So who removed them?"), ("backchannel", "हाँ।")]) == ["", ""]  # a filler answering it waits too
+    assert modes([("", "बस तमाशा देखती रह जाएगी!"), ("backchannel", "True.")]) == ["", ""]  # one phrase: after it
+    assert modes([("", "हाँ, वो अब Prime Minister हैं। पर problem ये है"), ("backchannel", "हम्म")]) == ["", "backchannel"]
 
 
 def test_a_filler_after_a_cut_in_waits_for_its_speaker_to_finish():
