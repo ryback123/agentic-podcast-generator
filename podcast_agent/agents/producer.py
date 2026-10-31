@@ -1,10 +1,15 @@
 """Producer agent: plans the episode (cast, format, segments, research questions)."""
 import random
 import re
+from concurrent.futures import ThreadPoolExecutor
+from pathlib import Path
 
+from .. import document
 from ..episode import ask, log
 from ..languages import LANGS, lang_rule
-from .prompts import FORMATS, HOOKS, PRODUCER
+from .prompts import DIGEST, DOCUMENT, FORMATS, HOOKS, PRODUCER
+
+PLAN_CHARS = 40000  # of document text the producer reads whole (the model takes 32k tokens); longer: part summaries
 
 
 def check_plan(plan):
@@ -37,6 +42,29 @@ def assign_questions(ep, plan):
             seg["qids"].append(old[t])
 
 
+def document_brief(ep):
+    """The uploaded document as the producer sees it: the whole text, or for a long one a summary of each part
+    (made once, kept in ep["digest"])."""
+    r = ep["request"]
+    doc = r["document"]
+    doc_pages = document.pages(doc["name"], (Path(ep["dir"]) / doc["file"]).read_bytes())
+    text, note = "\n\n".join(f"[p. {n}]\n{t}" if n else t for n, t in doc_pages), ""
+    if len(text) > PLAN_CHARS:
+        if not ep.get("digest"):
+            pieces = document.parts(doc_pages)
+            log(ep, "producer", f"summarising the document in {len(pieces)} parts")
+            labels = [label or f"part {k} of {len(pieces)}" for k, (label, _) in enumerate(pieces, 1)]
+            words = max(40, 6000 // len(pieces))
+            with ThreadPoolExecutor(4) as ex:
+                sums = ex.map(lambda lt: ask(ep, DIGEST.format(label=lt[0], name=doc["name"], words=words, text=lt[1]),
+                                             "digest", temperature=0.2), zip(labels, (t for _, t in pieces)))
+                ep["digest"] = [[label, s.strip()] for label, s in zip(labels, sums)]
+        text, note = "\n\n".join(f"[{label}] {s}" for label, s in ep["digest"]), ", summarised part by part (it is long)"
+    web = ("questions it leaves open are searched on the web" if r.get("doc_web")
+           else "facts come from the document only, so ask nothing it does not cover")
+    return DOCUMENT.format(name=doc["name"], web=web, note=note, text=text)
+
+
 def produce(ep):
     """(Re)plan the episode. Starts over: earlier facts and script are dropped."""
     r = ep["request"]
@@ -47,6 +75,7 @@ def produce(ep):
     fmt = rng.choice([f for f in FORMATS if n >= 3 or "panel" not in f])
     hook = rng.choice(HOOKS)
     prompt = PRODUCER.format(topic=r["topic"], notes=r["description"] or "none", lang=LANGS[r["lang"]][0],
+                             document=document_brief(ep) if r.get("document") else "",
                              script=LANGS[r["lang"]][1], lang_rule=lang_rule(r["lang"], r["code_mix"]), n=n,
                              minutes=minutes, fmt=fmt, hook=hook, k=main + 2, main=main,
                              extra_role=", and someone who pushes back or brings a different view" if n >= 3 else "")

@@ -3,6 +3,8 @@ episode; the UI polls GET /api/episodes/{id}, which reads the episode.json the j
 
   python -m uvicorn podcast_agent.web.app:app --host 127.0.0.1 --port 8842
 """
+import base64
+import binascii
 import hashlib
 import json
 import shutil
@@ -13,7 +15,7 @@ from fastapi import Body, FastAPI, HTTPException, Request
 from fastapi.responses import FileResponse, PlainTextResponse
 from fastapi.staticfiles import StaticFiles
 
-from .. import edits, llm, pipeline
+from .. import document, edits, llm, pipeline
 from ..agents import producer, researcher, writer
 from ..audio import tts
 from ..config import RUNS, TAVILY_API_KEY, TTS_VOICE_INFO, TTS_VOICES
@@ -121,7 +123,10 @@ def get_script_json(eid: str):
 def duplicate(eid: str):
     """A new episode with the same request, planned from scratch."""
     r = load(episode_dir(eid))["request"]
-    ep = new_episode(r["topic"], r.get("description", ""), r["lang"], r["speakers"], r["minutes"], r["code_mix"], out=RUNS)
+    doc = r.get("document")
+    ep = new_episode(r["topic"], r.get("description", ""), r["lang"], r["speakers"], r["minutes"], r["code_mix"], out=RUNS,
+                     document=(doc["name"], (episode_dir(eid) / doc["file"]).read_bytes()) if doc else None,
+                     doc_web=r.get("doc_web", False))
     start(ep["id"], "planning", producer.produce)
     return {"id": ep["id"]}
 
@@ -248,10 +253,18 @@ def get_file(eid: str, path: str):
 # ---------------------------------------------------------------- create + agent stages
 @app.post("/api/episodes")
 def create(req: dict = Body(...)):
+    """A new episode, planned at once (or made whole with auto). An uploaded document comes as
+    {"name": file name, "data": base64 of its bytes}, so a file with nothing to read is refused before any folder
+    is made."""
+    doc = req.get("document")
     try:
+        if doc and len(doc.get("data", "")) > document.MAX_BYTES * 4 // 3 + 4:
+            raise ValueError(f"the document is over {document.MAX_BYTES // 2**20} MB")
         ep = new_episode(req.get("topic", ""), req.get("description", ""), req.get("lang", "en"),
-                            int(req.get("speakers", 2)), float(req.get("minutes", 12)), req.get("code_mix", "medium"), out=RUNS)
-    except (ValueError, TypeError) as e:
+                         int(req.get("speakers", 2)), float(req.get("minutes", 12)), req.get("code_mix", "medium"), out=RUNS,
+                         document=(str(doc["name"]), base64.b64decode(doc["data"], validate=True)) if doc else None,
+                         doc_web=bool(req.get("doc_web")))
+    except (ValueError, TypeError, KeyError, binascii.Error) as e:
         raise HTTPException(400, str(e))
     if req.get("auto"):
         start(ep["id"], "making the whole episode", run_all)

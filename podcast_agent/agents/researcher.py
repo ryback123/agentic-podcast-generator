@@ -1,19 +1,24 @@
 """Researcher agent: a tool loop (search / read / done) that builds a sourced fact sheet for the research questions.
-Its tools are in search.py."""
+Its tools are in search.py. An episode made from an uploaded document reads the document first (document.py), and
+searches only if the episode asks it to fill what the document leaves open."""
 import json
 from concurrent.futures import ThreadPoolExecutor
+from pathlib import Path
 
+from .. import document
 from ..episode import ask, log
 from ..languages import LANGS
 from . import search
 from .prompts import NOTES, RESEARCHER
 
 
-def take_notes(ep, hit):
-    try:
-        text = search.read_page(hit)
-    except (OSError, ValueError, KeyError) as e:  # tool errors are reported back to the agent
-        return [], f"could not read: {e}"
+def take_notes(ep, hit, text=None):
+    """Facts for the research questions from one search hit, or from `text` (a part of the uploaded document)."""
+    if text is None:
+        try:
+            text = search.read_page(hit)
+        except (OSError, ValueError, KeyError) as e:  # tool errors are reported back to the agent
+            return [], f"could not read: {e}"
     if len(text.strip()) < 80:
         return [], "page has no readable text"
     qs = "\n".join(f"{q}: {t}" for q, t in ep["questions"].items())
@@ -30,12 +35,40 @@ def take_notes(ep, hit):
     return facts, None
 
 
+def read_document(ep):
+    """Facts from every part of the uploaded document, read four parts at a time. Each fact cites its pages and
+    links to them."""
+    doc = ep["request"]["document"]
+    pieces = document.parts(document.pages(doc["name"], (Path(ep["dir"]) / doc["file"]).read_bytes()))
+    log(ep, "researcher", f"reading the document {doc['name']!r} in {len(pieces)} parts")
+    link = f"/api/episodes/{ep['id']}/files/{doc['file']}"
+
+    def notes(piece):
+        label, text = piece
+        page = label.split()[-1].split("-")[0] if label else ""
+        hit = {"title": f"{doc['name']}, {label}" if label else doc["name"], "url": f"{link}#page={page}" if page else link}
+        return take_notes(ep, hit, text)
+    with ThreadPoolExecutor(4) as ex:
+        for (label, _), (facts, err) in zip(pieces, ex.map(notes, pieces)):
+            for f in facts:
+                f["id"] = f"F{len(ep['facts']) + 1}"
+                ep["facts"].append(f)
+            log(ep, "researcher", f"document {label or 'text'}: " + (err or f"{len(facts)} fact{'s' * (len(facts) != 1)}"))
+
+
 def research(ep, max_steps=20, web=True):
     """Tool loop: the agent picks search / read / done until questions are covered. Starts a fresh fact sheet.
-    web=False keeps it to Wikipedia even when a Tavily key is set (Settings: web search off)."""
+    web=False keeps it to Wikipedia even when a Tavily key is set (Settings: web search off). With an uploaded
+    document, the document is read first, and the loop runs only if the request asks to fill gaps (doc_web)."""
     web = web and bool(search.TAVILY_KEY)
     plan, qs = ep["plan"], ep["questions"]
     ep["facts"] = []
+    if ep["request"].get("document"):
+        read_document(ep)
+        if not ep["request"].get("doc_web"):
+            ep["research_stats"] = {"steps": 0, "credits": 0}
+            log(ep, "researcher", f"done: {len(ep['facts'])} facts from the document (web search is off for it)")
+            return
     name, _, wiki = LANGS[ep["request"]["lang"]]
     lang_note = (f'lang is "en" or "{wiki}" ({name} Wikipedia); English usually has more detail.'
                  if wiki != "en" else 'lang must be "en".')
@@ -46,7 +79,9 @@ def research(ep, max_steps=20, web=True):
                        f'queries can be a short phrase. Source "wikipedia" is best for background. {wiki_note}')
     else:
         sources, search_note = '"wikipedia"', f"searches Wikipedia (web search is not configured). {wiki_note}"
-    results, read, history, searched = {}, set(), [], set()
+    results, read, searched = {}, set(), set()
+    history = [f"0. read the uploaded document -> {len(ep['facts'])} facts (counted above); search only for what it "
+               f"leaves open"] if ep["request"].get("document") else []
     credits = 0  # Tavily credits used
     for step in range(1, max_steps + 1):
         cov = {q: sum(f["q"] == q for f in ep["facts"]) for q in qs}

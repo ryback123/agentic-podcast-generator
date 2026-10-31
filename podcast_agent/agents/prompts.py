@@ -19,7 +19,7 @@ HOOKS = ["a surprising fact", "a short story or scene", "a question listeners ha
 PRODUCER = """You are the producer of an audio podcast. Plan one episode.
 
 Topic: {topic}
-Notes from the requester: {notes}
+Notes from the requester: {notes}{document}
 Language: {lang}. {lang_rule}
 Number of speakers: exactly {n}
 Target length: {minutes} minutes
@@ -35,6 +35,22 @@ Reply with only this JSON:
 {{"title": str, "audience": str, "format": str,
  "speakers": [{{"name": str, "gender": "female" | "male", "role": str, "knowledge": str, "style": str}}],
  "segments": [{{"title": str, "goal": str, "minutes": number, "questions": [str]}}]}}"""
+
+
+# The producer's view of an uploaded document (PRODUCER's {document}), and the summary of each part of a long one
+DOCUMENT = """
+
+The episode is about a document the requester uploaded, "{name}". Plan it from the document: its main ideas become the segments, in an order that builds, and the research questions ask what the document answers ({web}).
+The document{note}:
+---
+{text}
+---"""
+
+DIGEST = """Summarise this part ({label}) of the document "{name}" for a podcast producer planning an episode about the whole document. In at most {words} words, give its main points, keeping the key names, numbers and examples.
+Reply with only the summary.
+---
+{text}
+---"""
 
 
 # Three lines in one speaker's persona, so a persona can be tried before any script is written

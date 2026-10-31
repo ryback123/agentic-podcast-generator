@@ -5,7 +5,7 @@ description = "Agentic podcast generator: research, script and audio in English 
 readme = "README.md"
 license = "MIT"
 requires-python = ">=3.10"
-dependencies = ["fastapi>=0.135", "uvicorn>=0.44", "openai>=2.0", "numpy>=2.0"]
+dependencies = ["fastapi>=0.135", "uvicorn>=0.44", "openai>=2.0", "numpy>=2.0", "pypdf>=6.0"]
 
 [project.optional-dependencies]
 dev = ["pytest"]

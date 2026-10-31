@@ -91,6 +91,16 @@ a bar at the foot of its tab opens the next step and starts it (or only opens it
   speaker) over a scrubber cut at the chapters; the lines are grouped by chapter, the playing line lights up and the
   list follows along; click a chapter or a line to play from there.
 
+**From a document.** On the New page, pick a PDF, Word (.docx), text or Markdown file (up to 20 MB) to make the
+episode from it; the topic is then optional. The server reads it before making the episode (`document.py`): a PDF's
+text layer page by page with pypdf, a Word file's paragraphs and tables from its XML, text as it is. A scanned PDF has
+no text layer and is refused with a message (reading page images would need OCR). The producer plans from the whole
+document, or for one over 40,000 characters from a short summary of each part. Research reads the document in parts
+of about 8,000 characters (two or three PDF pages) with the same fact extractor used for web pages; each fact cites
+its pages and links to them. Only the document is used unless "Also search the web for what the document doesn't
+cover" is ticked; then the research agent searches for whatever the document left thin. The writer and fact-checker
+work from the facts as usual, so the script is held to what the document says.
+
 "Make the whole episode" runs every step in one go. Long steps run as background jobs while the page shows what the
 agents are doing.
 
@@ -100,6 +110,7 @@ To share it from a machine with no public address: `cloudflared tunnel --url htt
 
 ```bash
 python -m podcast_agent --topic "How UPI payments work" --description "for class 8 students" --lang hi --minutes 12
+python -m podcast_agent --document paper.pdf --lang hi   # an episode made from a document (--doc-web: and the web)
 python -m podcast_agent --help   # speakers, code-mix level, research steps, revisions, seed, output dir
 python -m pytest                 # tests, no model calls
 ```
@@ -126,6 +137,7 @@ podcast_agent/
 ├── config.py          every setting (environment variables)
 ├── languages.py       the 12 languages, their scripts, speaking pace, code-mix levels
 ├── llm.py             chat client for any OpenAI-compatible endpoint, JSON replies
+├── document.py        reads an uploaded PDF, Word or text file into pages and parts
 ├── episode.py         episode.json: what it holds, saving and loading; the script line format
 ├── edits.py           edits from the web app: the plan (renaming speakers), a segment's lines
 ├── pipeline.py        the order the agents run in

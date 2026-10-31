@@ -16,6 +16,7 @@ const COPY = '<svg viewBox="0 0 16 16" aria-hidden="true"><rect x="5" y="5" widt
 const ICON = (d) => `<svg viewBox="0 0 16 16" aria-hidden="true"><path d="${d}"/></svg>`;
 const MINUS = ICON("M3.5 8h9"), PLUS = ICON("M8 3.5v9M3.5 8h9"), CROSS = ICON("M4.5 4.5l7 7M11.5 4.5l-7 7");
 const DOWNLOAD = ICON("M8 2.5v8M4.5 7.5 8 11l3.5-3.5M3 13.5h10");
+const DOC = ICON("M4 1.5h5.5l3 3v10H4zM9.5 1.5v3h3M6 8h4.5M6 10.5h4.5");
 const IMAGE = '<svg viewBox="0 0 16 16" aria-hidden="true"><rect x="2" y="3" width="12" height="10" rx="1.5"/><path d="M2.5 11.5l3.5-3.5 3 3 2-2 2.5 2.5"/></svg>';
 // the logo's mic, for an episode with no cover image yet
 const MARK = '<svg class="mark" viewBox="0 0 64 64" aria-hidden="true"><rect x="25" y="8" width="14" height="27" rx="7" fill="currentColor"/>'
@@ -285,6 +286,13 @@ function renderHome() { // laid out like Settings: a title, then panels, then th
         <textarea class="topic" name="topic" rows="2" required placeholder="How UPI payments work"></textarea></label>
       <label class="f"><span>Who is it for, and how should it feel? (optional)</span>
         <textarea name="description" rows="2" placeholder="Class 8 students; friendly, with everyday examples"></textarea></label>
+      <div class="f docrow"><span>Make it from a document (optional)</span>
+        <div class="bar"><label class="btn btn-line">${DOC}<span class="docname">${DOC_PICK}</span>
+          <input type="file" name="doc" class="vh" accept=".pdf,.docx,.txt,.md"></label>
+          <button class="btn btn-quiet" type="button" data-act="dropDoc" hidden>${CROSS}Remove</button></div>
+        <label class="check" hidden><input type="checkbox" name="doc_web">
+          Also search the web for what the document doesn't cover. Otherwise every fact comes from the document.</label>
+      </div>
     </section>
     <section class="panel">
       <div class="f"><span>Language</span>${langChips(s.lang)}</div>
@@ -493,13 +501,42 @@ function updateNewForm(form) { // the new-episode form and Settings: no English 
   $(".mixbox", form).hidden = form.lang.value === "en";
   $(".mixhint", form).textContent = MIX[form.code_mix.value];
 }
+// an episode can be made from a PDF, Word or text file: it goes up with the request, base64-encoded, and the server
+// reads it before making the episode, so a file with nothing to read is refused here
+const DOC_PICK = "Choose a PDF, Word or text file", DOC_MAX = 20 * 2 ** 20;
+function updateDoc(form) { // a picked document: its name on the button, the web choice, and the topic optional
+  const f = form.doc.files[0], row = $(".docrow", form);
+  $(".docname", row).textContent = f ? `${f.name}, ${f.size < 2 ** 20 ? `${Math.ceil(f.size / 1024)} KB`
+    : `${(f.size / 2 ** 20).toFixed(1)} MB`}` : DOC_PICK;
+  $("[data-act=dropDoc]", row).hidden = $(".check", row).hidden = !f;
+  form.topic.required = !f;
+  form.topic.placeholder = f ? "Optional: what to focus on" : "How UPI payments work";
+}
+const base64 = (file) => new Promise((ok, fail) => {
+  const r = new FileReader();
+  r.onload = () => ok(r.result.slice(r.result.indexOf(",") + 1));
+  r.onerror = () => fail(r.error);
+  r.readAsDataURL(file);
+});
 async function submitNew(form, mode) {
   const body = { topic: form.topic.value, description: form.description.value, lang: form.lang.value,
     speakers: +form.speakers.value, minutes: +form.minutes.value, code_mix: form.code_mix.value, auto: mode === "auto" };
+  const doc = form.doc.files[0], buttons = $$("button[type=submit]", form);
   try {
+    if (doc) {
+      if (doc.size > DOC_MAX) throw new Error("The document is over 20 MB.");
+      buttons.forEach((b) => { b.disabled = true; });
+      toast("Reading the document…");
+      body.document = { name: doc.name, data: await base64(doc) };
+      body.doc_web = form.doc_web.checked;
+    }
     const { id } = await api("POST", "/api/episodes", body);
     location.hash = `#/ep/${id}/plan`;
-  } catch (e) { toast(e.message, true); }
+  } catch (e) {
+    toast(e.message, true);
+  } finally {
+    buttons.forEach((b) => { b.disabled = false; });
+  }
 }
 
 // ---------------------------------------------------------------- episode
@@ -580,7 +617,9 @@ function render() {
       <div>
       <h1 class="${/[^\x00-\x7F]/.test(title) ? "native" : ""}" lang="${r.lang}">${esc(title)}</h1>
       <div class="meta"><span>${NATIVE[r.lang]}</span><span>${r.speakers} speakers</span><span>${r.minutes} minute target</span>
-        ${r.lang !== "en" ? `<span>${cap(r.code_mix)} English mixing</span>` : ""}<span>Topic: ${esc(r.topic)}</span></div>
+        ${r.lang !== "en" ? `<span>${cap(r.code_mix)} English mixing</span>` : ""}${r.document
+          ? `<span>From <a href="/api/episodes/${EP.id}/files/${r.document.file}" target="_blank" rel="noopener">${esc(r.document.name)}</a>${r.doc_web ? " and the web" : ""}</span>`
+          : `<span>Topic: ${esc(r.topic)}</span>`}</div>
     </div></div>
     <div class="headside">${lamp}<div class="actions">
       ${EP.cover ? '<button class="btn btn-quiet" type="button" data-act="dropCover">Remove cover</button>' : ""}
@@ -657,12 +696,14 @@ const VIEWS = {
     const busy = researching();
     const qs = Object.entries(EP.questions);
     const steps = EP.log.filter((e) => e.agent === "researcher");
-    const pages = new Set(EP.facts.map((f) => f.url)).size;
+    const fromDoc = EP.facts.filter((f) => f.url.startsWith("/api/")).length; // see researcher.read_document
+    const pages = new Set(EP.facts.filter((f) => !f.url.startsWith("/api/")).map((f) => f.url)).size;
+    const where = [fromDoc ? EP.request.document.name + (pages ? ` (${fromDoc})` : "") : "", pages || !fromDoc ? `${pages} pages` : ""];
     return `<div class="bar">
         <button class="btn btn-primary" data-act="research">${EP.facts.length ? "Research again" : "Run research"}</button>
         ${hasScript() ? '<button class="btn" data-act="writeAll">Rewrite the whole script</button>'
           : EP.facts.length ? "" : '<button class="btn" data-act="writeAll">Write the script</button>'}
-        <span class="grow"></span><span class="hint">${EP.facts.length} facts from ${pages} pages${EP.research_stats ? `, ${EP.research_stats.credits} web search credits` : ""}</span></div>
+        <span class="grow"></span><span class="hint">${EP.facts.length} facts from ${where.filter(Boolean).join(" and ")}${EP.research_stats?.credits ? `, ${EP.research_stats.credits} web search credits` : ""}</span></div>
       ${qs.length ? `<div class="qs">${qs.map(([q, t], qi) => {
         const fs = EP.facts.filter((f) => f.q === q);
         return `<div class="q"><header><h3>${esc(t)}</h3>
@@ -863,6 +904,7 @@ const ACTIONS = {
   },
   pickCover: () => $("#coverfile").click(), // the input lives outside #main, so a re-render can't drop the pick
   dropCover: () => act("DELETE", "/cover", undefined, "Cover removed"),
+  dropDoc: (b) => { b.form.doc.value = ""; updateDoc(b.form); },
   step: (b) => { // the − and + beside speakers and length; the number input keeps it within min and max
     const input = b.form[b.dataset.name];
     if (b.dataset.d > 0) input.stepUp(); else input.stepDown();
@@ -1037,6 +1079,7 @@ document.addEventListener("input", (e) => {
 document.addEventListener("change", (e) => {
   const t = e.target;
   if (t.form?.id === "newform" || t.form?.id === "settingsform") updateNewForm(t.form);
+  if (t.name === "doc") updateDoc(t.form);
   if (t.name === "theme") setTheme(t.value);
   if (t.id === "find-lang" || t.name === "find-state") {
     FIND[t.id === "find-lang" ? "lang" : "state"] = t.value;

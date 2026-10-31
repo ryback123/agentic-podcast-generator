@@ -300,6 +300,11 @@ section > h2:first-child { margin-top: 0; }
 .seglen input, .seglen .sk-field { width: 70px; }
 .check { display: flex; align-items: flex-start; gap: 10px; font-weight: 500; max-width: 72ch; }
 .check input { width: 18px; height: 18px; margin: 2px 0 0; accent-color: var(--accent); flex-shrink: 0; }
+.docrow .bar { margin-top: 2px; }
+.docrow .check { margin-top: 10px; }
+.docrow label.btn { max-width: 100%; }
+.docrow .docname { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.docrow label.btn:focus-within { outline: 2px solid var(--accent); outline-offset: 2px; }
 
 /* ---------- Episodes tab */
 .pagehead { display: flex; flex-wrap: wrap; align-items: baseline; gap: 6px 14px; margin-bottom: 20px; }

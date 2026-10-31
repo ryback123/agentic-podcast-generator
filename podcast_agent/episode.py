@@ -7,7 +7,10 @@ Each episode has its own folder, config.RUNS/<id>/:
 
 episode.json:
   id, created
-  request         what was asked for: topic, description, lang, speakers, minutes, code_mix, seed
+  request         what was asked for: topic, description, lang, speakers, minutes, code_mix, seed; for an episode
+                  made from an uploaded document also document {file (document.pdf etc. in this folder), name,
+                  pages (PDF), chars} and doc_web (search the web for what it leaves open)
+  digest          a long document's summary per part, made once by the producer [[label, summary]]
   provenance      code commit and model used
   plan            by the producer, editable by the user: title, audience, format, hook,
                   speakers [{name, gender, role, knowledge, style}] (style is the persona: who they are and
@@ -39,6 +42,7 @@ from pathlib import Path
 
 from . import llm
 from .config import RUNS
+from .document import pages
 from .languages import CODE_MIX, LANGS, chars_per_min
 
 TAGS = {"backchannel": "backchannel", "cut": "cuts in", "fade": "talks over"}  # mode -> tag in "NAME (tag): text"
@@ -47,9 +51,15 @@ LINE = re.compile(r"^\s*([A-Za-z]+)\s*(?:\(([A-Za-z ]+)\))?\s*:\s*(.+?)\s*$")
 
 
 # ---------------------------------------------------------------- storage
-def new_episode(topic, description="", lang="en", speakers=2, minutes=12, code_mix="medium", seed=None, out=RUNS):
+def new_episode(topic, description="", lang="en", speakers=2, minutes=12, code_mix="medium", seed=None, out=RUNS,
+                document=None, doc_web=False):
+    """A new episode folder with its request. document: (file name, bytes) of an uploaded document to make the
+    episode from (the topic then defaults to its name); doc_web: also search the web for what it leaves open."""
     if lang not in LANGS or code_mix not in CODE_MIX:
         raise ValueError(f"unsupported language {lang!r} or code-mix {code_mix!r}")
+    doc_pages = pages(*document) if document else None  # ValueError, for the user, if it has no text to read
+    if document and not topic.strip():
+        topic = re.sub(r"[_\s]+", " ", Path(document[0]).stem)
     if not topic.strip() or not 2 <= speakers <= 5 or not 2 <= minutes <= 30:
         raise ValueError("need a topic, 2-5 speakers and 2-30 minutes")
     seed = seed if seed is not None else random.randrange(10**6)
@@ -64,6 +74,13 @@ def new_episode(topic, description="", lang="en", speakers=2, minutes=12, code_m
           "provenance": {"commit": git("rev-parse", "HEAD"), "dirty": bool(git("status", "--porcelain")),
                          "model": llm.MODEL, "base_url": str(llm._client.base_url)},
           "plan": None, "questions": {}, "facts": [], "log": []}
+    if document:
+        name, data = document
+        file = "document" + Path(name).suffix.lower()
+        (run / file).write_bytes(data)
+        ep["request"]["document"] = {"file": file, "name": Path(name).name,
+                                     "pages": doc_pages[-1][0], "chars": sum(len(t) for _, t in doc_pages)}
+        ep["request"]["doc_web"] = bool(doc_web)
     save(ep)
     return ep
 
