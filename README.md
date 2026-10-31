@@ -164,30 +164,6 @@ PRODUCT.md, DESIGN.md  who the app is for, and its visual system (colours, type,
 dev/tts_standin.py     local OpenAI-style TTS server, used for development before the course TTS API
 ```
 
-## Development setup
-
-Course runs on our cluster:
-
-- Episodes are saved under `/projects/data/ttsteam/nikhil/runs/podcast_agent/runs/`.
-- Service scripts are in `/projects/data/ttsteam/nikhil/runs/podcast_agent/services/`: `gemma31b_local/` (vLLM,
-  Gemma 4 31B), `tts_local/` (the TTS stand-in) and `web/` (the app and its Cloudflare tunnel).
-- Since 2026-10-31 the app's model is `google/gemma-4-31b-it` on OpenRouter (settings in `~/.podcast_api.env`); the
-  local vLLM server is no longer used by it.
-- Evaluation runs:
-  - [langs_20261029](</projects/data/ttsteam/nikhil/runs/podcast_agent_evals/runs/langs_20261029/summary.md>): one
-    episode in each of 10 Indian languages with the same settings, to find language-specific script problems (code
-    `0607294`).
-  - [wordcritic_20261029](</projects/data/ttsteam/nikhil/runs/podcast_agent_evals/runs/wordcritic_20261029/summary.md>):
-    the same sweep after the word-level critics and the fixes it prompted (code `c8736f5`).
-  - [wordcritic2_20261029](</projects/data/ttsteam/nikhil/runs/podcast_agent_evals/runs/wordcritic2_20261029/summary.md>):
-    the same again after fixing the hyphen check (code `02c8093`).
-  - [wordcritic3_20261029](</projects/data/ttsteam/nikhil/runs/podcast_agent_evals/runs/wordcritic3_20261029/summary.md>):
-    the same again after fixing the accented-word check and cut-off replies.
-  - [swapfix_20261029](</projects/data/ttsteam/nikhil/runs/podcast_agent_evals/runs/swapfix_20261029/summary.md>):
-    the same again after stopping the editor swapping native words for English (code `ed7a82f`).
-  - [budget_20261029](</projects/data/ttsteam/nikhil/runs/podcast_agent_evals/runs/budget_20261029/summary.md>):
-    the same again with an English budget for medium code-mixing (code `eab1a98`).
-
 ## Licence
 
 MIT, see [LICENSE](LICENSE).
