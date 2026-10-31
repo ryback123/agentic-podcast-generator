@@ -636,6 +636,7 @@ const VIEWS = {
         <div class="bar"><span class="hint">${(ep.seconds / 60).toFixed(1)} minutes${ep.speed > 1 ? ` at ${ep.speed}× speed` : ""}${ep.chars_per_min ? `, ${ep.chars_per_min} characters a minute` : ""}</span>
           <span class="grow"></span><a class="btn" href="${file(ep.file)}" download>Download MP3</a>
           <a class="btn btn-quiet" href="${file("episode.wav")}" download>WAV</a></div>
+        ${ep.times ? "" : '<p class="hint">Built before chapters and line highlighting existed: click Update audio below to add them (no lines are generated again).</p>'}
         ${ep.chapters?.length ? `<ol class="chapters" aria-label="Chapters">${ep.chapters.map((c, i) => `<li><button type="button"
           data-act="seek" data-t="${c.start}"><b>${i + 1}</b><span>${esc(c.title)}</span><time>${mmss(c.start)}</time></button></li>`).join("")}</ol>` : ""}</div>` : ""}
       <section><h2>Voices</h2><div class="voices">${EP.plan.speakers.map((s, i) => `
