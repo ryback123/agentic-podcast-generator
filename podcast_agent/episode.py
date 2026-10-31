@@ -18,7 +18,8 @@ episode.json:
   facts           [{id, q, fact, source, url}] from the researcher
   research_stats  research steps and search credits used
   stats           script length, speaker shares, open issues (update_stats)
-  audio           voices {speaker: voice}, takes {"SPEAKER|text": n}, episode (the mixed file)
+  audio           voices {speaker: voice}, takes {"SPEAKER|text": n}, episode (the mixed file: seconds, speed,
+                  chapters [{title, start}], times [[clip file, start, end]] for each line in script order)
   log             what every agent and the user did, in order
 
 A script line ("turn") is [speaker, text, mode]. The mode says how the line starts:
