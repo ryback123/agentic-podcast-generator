@@ -9,17 +9,24 @@ import numpy as np
 
 RATE = 24000
 GAP_TURN, GAP_SEGMENT = 0.25, 0.8  # pause between lines when none is given (tests), and between segments
-# Pauses between lines of a segment, in seconds, on top of the ~0.1 s of quiet each clip keeps at its ends. Negative:
-# the reply starts that much before the last line ends. ponytail: ranges guessed by ear, averaging the old fixed 0.25 s;
-# fit them to gaps measured in real two-person conversations if the rhythm still sounds off.
-SAME_SPEAKER = (0.3, 0.6)  # the same speaker going on after a filler: a breath
-REPLY = [(0.12, (-0.3, -0.12)), (0.68, (0.05, 0.35)), (0.20, (0.4, 0.9))]  # (share, range): early start, quick, a think
+# Timings below come from real two-person conversation: IndicVoices conversations with each speaker on their own
+# channel, measured in OverlapForge (a diarization data project) and its literature review.
+# Pauses between lines of a segment, in seconds, on top of the ~0.1 s of quiet the two clips keep at their ends.
+# Negative: the reply starts that much before the last line ends.
+SAME_SPEAKER = (0.2, 0.5)  # the same speaker going on after a filler: a breath (pauses within a turn average 0.45 s)
+# The pause before a reply, as 5% quantiles of 2,902 Hindi and Tamil handovers (speech edges trimmed), less the clips'
+# 0.1 s. Kept: from 0.4 s of overlap (the next speaker starting on the last word) to 1.5 s of silence. Deeper
+# overlaps are the script's cut-ins and fillers; longer silences are dead air a podcast edits out. 16% start early.
+REPLY = [-0.5, -0.39, -0.25, -0.13, 0.02, 0.12, 0.19, 0.26, 0.34, 0.4, 0.46,
+         0.54, 0.61, 0.68, 0.77, 0.85, 0.95, 1.04, 1.15, 1.28, 1.4]
 LOUDNESS, PEAK = -19, -1.5  # LUFS: -19 for mono plays like the usual podcast -16 for stereo; peaks stay below -1.5 dBFS
 # Overlaps (line modes, see episode.py). ponytail: fixed timings; anchor cut-ins to word timings from the TTS/ASR
 # if they land awkwardly.
 OVERLAP = {"cut": 0.5, "fade": 1.0}  # a cut-in starts this many seconds before the interrupted line ends
-CUT_KEEP = 0.12  # with a direct cut, the interrupted line keeps sounding this long under the cut-in, then stops
-BACKCHANNEL_AT, BACKCHANNEL_GAIN = 0.6, 0.6  # a backchannel goes in the pause nearest 60% into the line, a bit quieter
+CUT_KEEP = 0.25  # with a direct cut, the interrupted line keeps sounding this long under the cut-in (people yield
+# within 0.15-0.4 s), then stops
+BACKCHANNEL_AT, BACKCHANNEL_GAIN = 0.4, 0.6  # a backchannel goes in the pause nearest 40% into the line (real ones
+# land 20-65% of the way into the other's turn), a bit quieter
 PAUSE = 0.2  # a quiet stretch this long is a pause (real TTS: 0.2-1 s at clause breaks; ~0.1 s gaps are consonants)
 
 
@@ -55,14 +62,8 @@ def pauses(lines, seed):
     out, floor = [], None
     for i, (speaker, mode) in enumerate(lines):
         rng = random.Random(f"{seed}|{i}")
-        lo, hi = SAME_SPEAKER
-        if speaker != floor:
-            r = rng.random()
-            for share, (lo, hi) in REPLY:
-                if r < share:
-                    break
-                r -= share
-        out.append(rng.uniform(lo, hi))
+        out.append(float(np.interp(rng.random(), np.linspace(0, 1, len(REPLY)), REPLY)) if speaker != floor
+                   else rng.uniform(*SAME_SPEAKER))
         floor = speaker if mode != "backchannel" else floor
     return out
 

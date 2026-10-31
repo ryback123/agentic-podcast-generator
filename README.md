@@ -27,7 +27,10 @@ All prompts are in `agents/prompts.py`. `pipeline.py` runs the agents in order.
   talks) and cut-ins (someone starts before the other finishes). In the audio, a backchannel plays quietly in a pause
   of the other line, which carries on. A cut-in starts before the other line ends, which then stops dead or fades out.
   The pause before each reply varies (a quick reply, a longer think, now and then a reply that starts just before the
-  other person finishes) and stays the same each time the episode is built.
+  other person finishes) and stays the same each time the episode is built. The rates and timings follow real
+  two-person conversation (IndicVoices recordings with each speaker on their own channel): about six backchannels a
+  minute, about one handover in ten written as a cut-in or talk-over and shared out between the speakers, and reply
+  pauses drawn from measured handover gaps.
 - **Word-level critics.** The fact-checker and editor point at the exact words to change and give replacements, which
   are patched into the line, so a fix does not disturb the rest of the segment. When a segment already has more
   English than its mix allows, fixes that put English in place of native words are dropped.

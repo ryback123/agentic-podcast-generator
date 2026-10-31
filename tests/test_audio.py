@@ -65,27 +65,28 @@ def test_pauses_vary_but_stay_put():
     talk = [("A", ""), ("B", "")] * 200
     p = pauses(talk, 3)
     assert p == pauses(talk, 3) and p != pauses(talk, 4)  # the same each build of an episode
-    assert 0.05 < sum(p) / len(p) < 0.45 and min(p) < 0 < max(p)  # around the old 0.25 s, some replies start early
+    early, median = sum(x < 0 for x in p) / len(p), sorted(p)[len(p) // 2]
+    assert 0.1 < early < 0.22 and 0.35 < median < 0.55 and max(p) <= 1.4  # like real handovers: 16% early, median 0.46
     after_filler = pauses([("A", ""), ("B", "backchannel"), ("A", "")] * 50, 3)[2::3]
-    assert min(after_filler) >= 0.3  # A still holds the floor: carrying on after a filler is a breath, never overlap
+    assert min(after_filler) >= 0.2  # A still holds the floor: carrying on after a filler is a breath, never overlap
 
 
 def test_filler_goes_in_a_pause_of_the_line_it_reacts_to():
     bc = track([(0, "", ONE), (0, "backchannel", ONE[: R // 4]), (0, "", ONE)])
     assert len(bc) == int(2.25 * R)  # the next line still waits for the line holding the floor
-    assert abs(bc[int(0.7 * R)] - 0.1 * (1 + BACKCHANNEL_GAIN)) < 1e-6  # no pause in that line: at 60%, quieter
+    assert abs(bc[int(0.5 * R)] - 0.1 * (1 + BACKCHANNEL_GAIN)) < 1e-6  # no pause in that line: at 40%, quieter
     hm, gap = ONE[: R // 4], np.zeros(int(0.3 * R), np.float32)
     talk = np.concatenate([ONE, gap, ONE, ONE])  # 3.3 s line with one pause, at 1.0 s
     two = track([(0, "", talk), (0, "backchannel", hm), (0, "backchannel", hm)])
     assert len(two) == len(talk) and abs(two[int(1.2 * R)] - 0.1 * BACKCHANNEL_GAIN) < 1e-6  # 1st in the pause, alone
-    assert abs(two[int(2.1 * R)] - 0.1 * (1 + BACKCHANNEL_GAIN)) < 1e-6  # 2nd: no pause left, so at 60% (1.98 s)
+    assert abs(two[int(1.45 * R)] - 0.1 * (1 + BACKCHANNEL_GAIN)) < 1e-6  # 2nd: no pause left, so after the 1st (1.33 s)
     assert _pause_near(np.concatenate([ONE, gap[: R // 10], ONE]), 0.5, 0) is None  # 0.1 s gaps are not pauses
 
 
 def test_cut_ins_stop_or_fade_the_line_they_interrupt():
     cut = track([(0, "", ONE), (0, "cut", ONE)])
     assert len(cut) == int(1.5 * R)  # starts 0.5 s before line 1 ends
-    assert abs(cut[int(0.55 * R)] - 0.2) < 1e-6 and abs(cut[int(0.7 * R)] - 0.1) < 1e-6  # both, then line 1 stops
+    assert abs(cut[int(0.55 * R)] - 0.2) < 1e-6 and abs(cut[int(0.8 * R)] - 0.1) < 1e-6  # both, then line 1 stops
     fade = track([(0, "", np.full(2 * R, 0.1, np.float32)), (0, "fade", ONE)])  # 2 s line, cut-in 1 s before its end
     assert len(fade) == 2 * R and abs(fade[int(1.5 * R)] - 0.15) < 1e-3 and abs(fade[-1] - 0.1) < 1e-3  # fades under
     assert len(track([(0, "", ONE), (0, "fade", ONE)])) == int(1.5 * R)  # short line: cut-in no earlier than halfway

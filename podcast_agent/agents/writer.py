@@ -3,6 +3,7 @@ editor review it. The fact-checker and editor point at the exact words to change
 patched in place; only problems that word edits cannot fix send the segment back for a full rewrite. At most
 max_revisions rounds of fixes."""
 import re
+from collections import Counter
 from concurrent.futures import ThreadPoolExecutor
 
 from ..episode import ask, cast_text, log, parse_turns, turns_text
@@ -10,11 +11,52 @@ from ..languages import LANGS, chars_per_min, lang_rule
 from .checks import BANNED_OPENERS, LATIN_SHARE, adds_english, english_share, is_structural, segment_issues
 from .prompts import CONTEXT, EDITOR, FACTCHECK, REVISE, SAMPLE, WRITER, fact_lines, numbered
 
+# Fillers and interruptions in real two-person conversation (IndicVoices conversations, each speaker on their own
+# channel, measured in OverlapForge, a diarization data project): about 5.7 backchannels a minute. About 19% of
+# handovers overlap without being a backchannel, half of them only on the last word, which the mixer's early starts
+# give (audio/mix.py REPLY). That leaves about one handover in ten as a written overlap, and 35-45% of those are
+# competitive (a sharp cut-in rather than talking over).
+BACKCHANNELS_PER_MIN, OVERLAP_SHARE, CUT_SHARE = 5.7, 0.1, 0.4
+
+
+def segment_size(ep, seg):
+    """(characters, fewest turns, most turns) the segment is written to."""
+    chars = int(float(seg["minutes"]) * chars_per_min(ep["request"]["lang"]))
+    return chars, max(4, int(chars / 160)), max(6, int(chars / 80))
+
+
+def overlaps(ep):
+    """The overlaps to write in each segment, [[(speaker, "cuts in" | "talks over")]]: OVERLAP_SHARE of the expected
+    handovers, CUT_SHARE of them cut-ins, spread evenly over the episode. Each kind passes from speaker to speaker, so
+    no one does most of the interrupting."""
+    names = [s["name"] for s in ep["plan"]["speakers"]]
+    out, turns, k, cuts = [], 0, 0, 0
+    for seg in ep["plan"]["segments"]:
+        _, lo, hi = segment_size(ep, seg)
+        turns += (lo + hi) / 2
+        out.append([])
+        while k < int(OVERLAP_SHARE * turns + 0.5):
+            if int(CUT_SHARE * (k + 1) + 0.5) > int(CUT_SHARE * k + 0.5):
+                out[-1].append((names[(cuts + 1) % len(names)], "cuts in"))
+                cuts += 1
+            else:
+                out[-1].append((names[(k - cuts) % len(names)], "talks over"))
+            k += 1
+    return out
+
+
+def overlap_rule(todo):
+    if not todo:
+        return "In this segment nobody cuts in or talks over: each speaker lets the other finish."
+    times = {1: "once", 2: "twice"}
+    said = ", ".join(f"{name} {tag} {times.get(n, f'{n} times')}" for (name, tag), n in Counter(todo).items())
+    return f"In this segment, where it fits: {said}. No other line cuts in or talks over."
+
 
 def segment_context(ep, i, note=None):
     plan, segs = ep["plan"], ep["plan"]["segments"]
     seg, lang, code_mix = segs[i], ep["request"]["lang"], ep["request"]["code_mix"]
-    chars = int(float(seg["minutes"]) * chars_per_min(lang))
+    chars, t_lo, t_hi = segment_size(ep, seg)
     outline = "\n".join(f"{k + 1}. {s['title']}: {s.get('goal', '')}" +
                         (" (done)" if k < i else "  <- THIS SEGMENT" if k == i else " (later)")
                         for k, s in enumerate(segs))
@@ -34,7 +76,9 @@ def segment_context(ep, i, note=None):
     prev = f"\nLast lines of the previous segment:\n{turns_text(prev)}\n" if prev else ""
     ctx = CONTEXT.format(title=plan["title"], format=plan.get("format", ""), audience=plan["audience"],
                          cast=cast_text(plan), outline=outline, seg_title=seg["title"], goal=seg.get("goal", ""),
-                         chars=chars, minutes=seg["minutes"], t_lo=max(4, int(chars / 160)), t_hi=max(6, int(chars / 80)),
+                         chars=chars, minutes=seg["minutes"], t_lo=t_lo, t_hi=t_hi,
+                         backchannels=max(1, round(BACKCHANNELS_PER_MIN * float(seg["minutes"]))),
+                         overlaps=overlap_rule(overlaps(ep)[i]),
                          position=position, facts=fact_lines(facts), prev=prev, lang=LANGS[lang][0],
                          lang_rule=lang_rule(lang, code_mix), banned=", ".join(f'"{b}"' for b in BANNED_OPENERS),
                          note=f"\n\nThe producer's note for this segment (follow it): {note}" if note else "")

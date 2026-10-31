@@ -93,7 +93,7 @@ Outline:
 {outline}
 
 This segment: "{seg_title}". Goal: {goal}
-Length: about {chars} characters of dialogue (about {minutes} minutes spoken), roughly {t_lo}-{t_hi} turns.
+Length: about {chars} characters of dialogue (about {minutes} minutes spoken), roughly {t_lo}-{t_hi} turns, not counting backchannels.
 {position}
 
 Facts to use (use what fits; never mention fact ids or sources):
@@ -105,15 +105,15 @@ Rules:
 - Write every number, date, unit, and symbol as spoken words (no digits, %, /, & and so on). Apostrophes and ordinary punctuation are fine; in English use contractions (it's, don't, you're).
 - No markdown, stage directions, sound effects, or emojis.
 - Short turns: one to three sentences, sometimes just a quick reaction. Vary turn lengths.
-- Speakers react to what was just said, ask follow-up questions, sometimes interrupt or disagree, and use concrete examples and analogies that suit the audience.
+- Speakers react to what was just said, ask follow-up questions, sometimes disagree, and use concrete examples and analogies that suit the audience.
 - Each speaker talks like their persona in the cast: it shows in word choice, sentence length, attitude and how they react. Show it, never announce it, and do not repeat any phrase as a signature.
 - The facts come from sources written for experts. Explain each technical term in everyday words when it first comes up, or leave it out; keep only the few terms the listener needs.
 - Do not start turns with stock reactions ({banned}, or the same words in {lang}) and do not reuse the same reaction within the episode. Vary how turns begin: no single word (like yes, so, but, or meaning) should start more than one turn in ten.
 - Speakers never say their own name, except when introducing themselves in the opening.
 - Whenever a speaker's name is said, write it in Latin letters with normal capitalisation (Riya, not RIYA), even inside {lang} sentences.
 - Use the right grammatical gender for each speaker (see the cast).
-- Make it sound live. Now and then a listener reacts with a word or two while the other is still talking (like "hmm", "right" or "I see", in {lang} or English as people really say it). Write it as its own line straight after the line it reacts to: NAME (backchannel): text. Two to four per segment, varied, never by the speaker of the line they react to.
-- Once or twice per segment, someone cuts in before the other finishes. End the interrupted line mid-sentence with a dash (—), then tag the next line NAME (cuts in): text for a sharp interruption (disagreement, alarm), or NAME (talks over): text when the first speaker trails off underneath (eager agreement, finishing their thought). Use both kinds.{note}"""
+- Make it sound live. In real conversation the listener reacts with a word or two every ten seconds or so while the other is still talking (like "hmm", "right" or "I see", in {lang} or English as people really say it). Write it as its own line straight after the line it reacts to: NAME (backchannel): text. About {backchannels} in this segment, spread out, at most one after any line, varied, never by the speaker of the line they react to.
+- Real speakers rarely interrupt: about one handover in ten. {overlaps} To write one, end the interrupted line mid-sentence with a dash (—), then tag the next line NAME (cuts in): text for a sharp interruption (disagreement, alarm), or NAME (talks over): text when the first speaker trails off underneath (eager agreement, finishing their thought).{note}"""
 
 WRITER = """You are writing one segment of a podcast episode as spoken dialogue, not an essay.
 

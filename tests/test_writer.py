@@ -1,5 +1,7 @@
 """The writer's review loop with a fake model: word edits are patched in place, a rewrite happens only when word edits
 can't fix the problem, and an unreadable critic reply does not stop the episode."""
+from collections import Counter
+
 import pytest
 
 from podcast_agent.agents import writer
@@ -85,6 +87,25 @@ def test_no_fix_adds_english_to_a_segment_over_its_share(tmp_path, model, draft,
     first, second = (t[1] for t in ep["plan"]["segments"][0]["turns"])
     assert ("body-യിൽ" in first) == swapped and second == "അതെ, body-യെ കാക്കും."
 
+
+
+def test_overlaps_are_rare_spread_out_and_shared(tmp_path):
+    """About one handover in ten is written as a cut-in or talk-over, two in five of them sharp cut-ins, and both kinds
+    pass between the speakers (in the episode that prompted this, one speaker had 6 of the 7 cut-ins)."""
+    ep = episode(tmp_path)
+    ep["plan"]["segments"] = [{"title": "-", "goal": "-", "minutes": m} for m in (1, 2, 2, 2.5, 2, 1.5, 1)]
+    plan = writer.overlaps(ep)
+    handovers = sum((lo + hi) / 2 for _, lo, hi in (writer.segment_size(ep, s) for s in ep["plan"]["segments"]))
+    flat = [x for seg in plan for x in seg]
+    cuts = [name for name, tag in flat if tag == "cuts in"]
+    assert len(flat) == round(0.1 * handovers) and len(cuts) == round(0.4 * len(flat)), plan
+    assert all(1 <= len(seg) <= 2 for seg in plan), plan
+    for tag in ("cuts in", "talks over"):
+        by = Counter(name for name, t in flat if t == tag)
+        assert abs(by["ASHA"] - by["RAVI"]) <= 1, (tag, by)
+    ctx, _ = writer.segment_context(ep, 3)
+    assert "About 14 in this segment" in ctx and "No other line cuts in or talks over." in ctx  # 2.5 min
+    assert writer.overlap_rule([]).startswith("In this segment nobody cuts in")
 
 
 def test_sample_lines_are_cleaned(tmp_path, model):
