@@ -135,7 +135,8 @@ function homeSkeleton() { // shaped like renderHome
 const page = (title, body) => `<div class="page"><div class="pagehead"><h1>${title}</h1><span class="hint" id="count"></span></div>${body}</div>`;
 const pageSkeleton = (v) => (v === "episodes"
   ? `<div class="filters" aria-hidden="true">${sk("320px", "btn")}${sk("190px", "btn")}${sk("470px", "btn")}</div><div class="covers">${coverSkeleton()}</div>`
-  : times(2, (i) => `<section class="panel" aria-hidden="true">${sk(28)}${para(3, i)}</section>`)) + '<p class="vh" role="status">Loading</p>';
+  : (v === "settings" ? [6, 5, 3, 2, 4] : [3, 3]).map((n, i) => // shaped like the page it stands for
+    `<section class="panel" aria-hidden="true">${sk(28)}${para(n, i)}</section>`).join("")) + '<p class="vh" role="status">Loading</p>';
 
 // what the running job is working on
 const WRITES = ["making the whole episode", "running the remaining steps", "writing the script"];
@@ -399,11 +400,8 @@ const statusList = (st) => (st.error ? `<p class="hint">Could not check the serv
     ${st.web_search.credits} credits used so far</dd>
   <dt>Text to speech</dt><dd>${okDot(st.tts.configured)}${st.tts.configured ? `connected, ${st.tts.voices} voices` : "not connected"}</dd>
   <dt>Storage</dt><dd>${st.storage.episodes} episodes, ${size(st.storage.bytes)}</dd></dl>`);
-async function renderSettings() {
-  paint(page("Settings", pageSkeleton("settings")));
-  let st;
-  [SETTINGS, st] = await Promise.all([api("GET", "/api/settings"), api("GET", "/api/status").catch((e) => ({ error: e.message }))]);
-  if (document.body.dataset.view !== "settings") return; // left the tab while it loaded
+// drawn at once from the settings loaded at start-up; only the Services panel waits for its check
+function renderSettings() {
   const s = SETTINGS, theme = getTheme();
   paint(page("Settings", `<form id="settingsform" class="settings">
     <section class="panel"><h2>New episodes</h2><p class="hint">What the New tab starts with; each episode can still change them.</p>
@@ -436,7 +434,15 @@ async function renderSettings() {
       <p class="hint">Changes straight away and is kept in this browser only.</p></section>
     <div class="bar"><button class="btn btn-primary" type="submit">Save settings</button></div></form>
     <section class="panel"><h2>Services</h2><p class="hint">Server addresses and keys are set on the server, not here.</p>
-      ${statusList(st)}</section>`));
+      <div id="services" aria-busy="true"><dl class="status" aria-hidden="true">${times(4, (i) =>
+        `<dt>${sk("96px")}</dt><dd>${sk(30 + W[i] / 2)}</dd>`)}</dl></div></section>`));
+  api("GET", "/api/status").catch((e) => ({ error: e.message })).then((st) => {
+    const box = $("#services");
+    if (!box) return; // left the tab meanwhile
+    box.innerHTML = statusList(st);
+    box.removeAttribute("aria-busy");
+  });
+  api("GET", "/api/settings").then((fresh) => { SETTINGS = fresh; }).catch(() => {}); // current for the next save
 }
 async function saveSettings(form) {
   const body = { ...SETTINGS, lang: form.lang.value, speakers: +form.speakers.value, minutes: +form.minutes.value,
