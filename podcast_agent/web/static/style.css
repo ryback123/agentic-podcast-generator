@@ -281,16 +281,30 @@ details.trace summary { cursor: pointer; font-weight: 600; }
 .sheet footer input { flex: 1 1 220px; width: auto; }
 
 /* ---------- audio */
-.player { background: var(--sheet); border-radius: 8px; padding: 14px 16px; display: flex; flex-direction: column; gap: 10px; }
+.player { background: var(--sheet); border-radius: 8px; padding: 14px 16px; display: flex; flex-direction: column; gap: 10px;
+          position: sticky; top: 0; z-index: 3; box-shadow: 0 1px 0 var(--line); } /* stays in reach while the lines follow */
 .player audio { width: 100%; }
+.chapters { display: flex; gap: 6px; overflow-x: auto; margin: 0; padding: 0 0 2px; list-style: none; }
+.chapters button { display: flex; align-items: baseline; gap: 6px; white-space: nowrap; border: 1px solid var(--line);
+                   border-radius: 999px; background: none; color: var(--ink); font: inherit; font-size: 13px; padding: 5px 11px;
+                   cursor: pointer; }
+.chapters button span { max-width: 24ch; overflow: hidden; text-overflow: ellipsis; }
+.chapters b { font-weight: 720; }
+.chapters time { color: var(--muted); font-variant-numeric: tabular-nums; }
+.chapters button.now { background: var(--ink); border-color: var(--ink); color: var(--sheet); }
+.chapters button.now time { color: inherit; opacity: .75; }
 .voices { display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 10px; }
 .voices label { background: var(--sheet); border-radius: 8px; border-left: 5px solid var(--c); padding: 10px 12px; }
 .voices b { color: var(--c); font-stretch: 80%; font-size: 17px; }
-.al { display: grid; grid-template-columns: 36px 100px 1fr auto; gap: 10px; align-items: center; padding: 6px 0;
-      border-top: 1px solid var(--line); }
+.al { display: grid; grid-template-columns: 36px 100px 1fr auto; gap: 10px; align-items: center; padding: 6px 8px;
+      margin: 0 -8px; border-top: 1px solid var(--line); }
+.al.now { background: color-mix(in srgb, var(--c) 12%, transparent); } /* playing in the episode now */
+.al.now .tx { white-space: normal; }
 .al .who { color: var(--c); font-weight: 720; font-stretch: 80%; }
 .al .tx { font-family: var(--text); font-size: 14px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .al .pending { color: var(--muted); font-size: 12px; }
+button.tx { border: 0; background: none; padding: 0; color: inherit; text-align: left; cursor: pointer; min-width: 0; }
+button.tx:hover { text-decoration: underline; text-decoration-color: var(--line); text-underline-offset: 3px; }
 .play { width: 32px; height: 32px; border-radius: 50%; border: 1px solid var(--line); background: var(--sheet); cursor: pointer;
         display: grid; place-items: center; }
 .play svg { width: 12px; height: 12px; fill: currentColor; }
@@ -354,6 +368,7 @@ details.trace summary { cursor: pointer; font-weight: 600; }
   .outline .wide { grid-column: 1 / -1; }
   .al { grid-template-columns: 36px 1fr auto; }
   .al .tx { grid-column: 1 / -1; white-space: normal; }
+  .al > :last-child { grid-row: 1; grid-column: 3; } /* New take on the speaker's row, not squeezed under the text */
 }
 
 /* ---------- Episodes, Voices and Settings tabs */

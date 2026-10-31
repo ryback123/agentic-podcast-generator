@@ -42,6 +42,7 @@ function toast(msg, bad = false) {
 }
 const color = (i) => `var(--ch${(i % 5) + 1})`;
 const chanOf = (name) => color(Math.max(0, EP.plan.speakers.findIndex((s) => s.name === name)));
+const mmss = (s) => `${Math.floor(s / 60)}:${String(Math.floor(s % 60)).padStart(2, "0")}`;
 const clock = (t) => new Date(t * 1000).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit", second: "2-digit" });
 const cap = (s) => (s ? s[0].toUpperCase() + s.slice(1) : "");
 const file = (p) => `/api/episodes/${EP.id}/files/${p}`;
@@ -527,7 +528,7 @@ function render() {
     }).join("")}</nav>
     <div class="work"><fieldset class="stage" ${job.running && TAB !== "audio" ? "disabled" : ""}>${VIEWS[TAB]()}</fieldset>${cue()}</div>`);
   const same = listening && $(`main audio[src="${listening.getAttribute("src")}"]`);
-  if (same) { same.replaceWith(listening); listening.play(); } // taking it out of the page paused it; carry on
+  if (same) { same.replaceWith(listening); listening.play(); follow(listening); } // taking it out of the page paused it; carry on
   $$("textarea.auto").forEach(autosize);
   document.fonts.ready.then(() => $$("textarea.auto").forEach(autosize)); // sized again once the web fonts are in
   const c = $(".cue");
@@ -634,18 +635,24 @@ const VIEWS = {
         <audio controls preload="none" src="${file(ep.file)}?v=${ep.built}"></audio>
         <div class="bar"><span class="hint">${(ep.seconds / 60).toFixed(1)} minutes${ep.speed > 1 ? ` at ${ep.speed}× speed` : ""}${ep.chars_per_min ? `, ${ep.chars_per_min} characters a minute` : ""}</span>
           <span class="grow"></span><a class="btn" href="${file(ep.file)}" download>Download MP3</a>
-          <a class="btn btn-quiet" href="${file("episode.wav")}" download>WAV</a></div></div>` : ""}
+          <a class="btn btn-quiet" href="${file("episode.wav")}" download>WAV</a></div>
+        ${ep.chapters?.length ? `<ol class="chapters" aria-label="Chapters">${ep.chapters.map((c, i) => `<li><button type="button"
+          data-act="seek" data-t="${c.start}"><b>${i + 1}</b><span>${esc(c.title)}</span><time>${mmss(c.start)}</time></button></li>`).join("")}</ol>` : ""}</div>` : ""}
       <section><h2>Voices</h2><div class="voices">${EP.plan.speakers.map((s, i) => `
         <label class="f" style="--c:${color(i)}"><b>${esc(s.name)}</b><span>${esc(s.gender)}, ${esc(s.role)}</span>
           <select data-voice="${esc(s.name)}" ${lock}>${voiceOptions(picked[s.name], EP.request.lang)}</select></label>`).join("")}
         </div>
         <div class="bar" style="margin-top:12px"><button class="btn btn-primary" data-act="genAudio" ${lock}>${ready ? "Update audio" : "Generate audio"}</button>
           <span class="hint">${ready} of ${EP.lines.length} lines have audio${ready && ready < EP.lines.length ? "; only new or changed lines are generated" : ""}.</span></div></section>
-      <section><h2>Lines</h2>${EP.lines.map((l) => `<div class="al" style="--c:${chanOf(l.speaker)}">
+      <section><h2>Lines</h2>${EP.lines.map((l, i) => {
+        const at = ep?.times?.[i]?.[0] === l.file ? ep.times[i] : null; // [file, start, end] in the episode, if still current
+        return `<div class="al" style="--c:${chanOf(l.speaker)}" ${at ? `data-t="${at[1]}" data-e="${at[2]}"` : ""} ${l.mode === "backchannel" ? "data-bc" : ""}>
         ${l.ready ? `<button class="play${playing(l)}" type="button" data-act="play" data-src="${file(l.file)}" aria-label="Play line">${PLAY}</button>` : busy ? sk("32px", "dot") : "<span></span>"}
-        <span class="who">${esc(l.speaker)}${l.mode ? `<small>${MODE_NOTE[l.mode]}</small>` : ""}</span><span class="tx" lang="${EP.request.lang}" title="${esc(l.text)}">${esc(l.text)}</span>
+        <span class="who">${esc(l.speaker)}${l.mode ? `<small>${MODE_NOTE[l.mode]}</small>` : ""}</span>${at ? `<button class="tx" type="button" data-act="seek" data-t="${at[1]}" lang="${EP.request.lang}"
+          title="Play the episode from here">${esc(l.text)}</button>` : `<span class="tx" lang="${EP.request.lang}" title="${esc(l.text)}">${esc(l.text)}</span>`}
         ${l.ready ? `<button class="btn btn-quiet" data-act="retake" data-i="${l.segment}" data-k="${l.line}" ${lock}>New take</button>` : busy ? sk("84px") : '<span class="pending">no audio yet</span>'}
-      </div>`).join("")}</section>`;
+      </div>`;
+      }).join("")}</section>`;
   },
 };
 
@@ -840,6 +847,13 @@ const ACTIONS = {
     act("POST", "/audio", { voices });
   },
   retake: (b) => act("POST", `/audio/${b.dataset.i}/${b.dataset.k}`),
+  seek: (b) => { // a chapter or a line: play the episode from there
+    const a = $(".player audio");
+    player.pause();
+    $$(".play.playing").forEach((x) => x.classList.remove("playing"));
+    a.currentTime = +b.dataset.t;
+    a.play();
+  },
   play: (b) => {
     const playing = b.classList.contains("playing");
     $$(".play.playing").forEach((x) => x.classList.remove("playing"));
@@ -852,6 +866,25 @@ const ACTIONS = {
 };
 
 // ---------------------------------------------------------------- events
+let FOLLOWED = null; // start time of the line the transcript last scrolled to
+function follow(a) { // mark what the episode is playing: its chapter, its line, and a filler said over that line
+  const t = a.currentTime, chs = $$(".chapters button"), rows = $$(".al[data-t]");
+  chs.forEach((b, i) => {
+    const now = t >= +b.dataset.t && (i === chs.length - 1 || t < +chs[i + 1].dataset.t);
+    if (now && !b.classList.contains("now")) b.closest("ol").scrollTo({ left: b.parentElement.offsetLeft - 16 }); // in view
+    b.classList.toggle("now", now);
+  });
+  rows.forEach((r) => r.classList.toggle("now", t >= +r.dataset.t && t < +r.dataset.e));
+  const cur = rows.find((r) => r.classList.contains("now") && !("bc" in r.dataset));
+  if (!cur || a.paused || cur.dataset.t === FOLLOWED) return;
+  FOLLOWED = cur.dataset.t;
+  const top = $(".player").getBoundingClientRect().bottom, r = cur.getBoundingClientRect();
+  if (r.top < top || r.bottom > innerHeight - ($(".tabs")?.offsetHeight || 0)) { // out of sight: bring it to the middle
+    cur.scrollIntoView({ block: "center", behavior: matchMedia("(prefers-reduced-motion: reduce)").matches ? "auto" : "smooth" });
+  }
+}
+document.addEventListener("timeupdate", (e) => { if (e.target.closest?.(".player")) follow(e.target); }, true); // capture: it does not bubble
+
 document.addEventListener("click", (e) => {
   const c = e.target.closest(".cover-link");
   if (c && e.button === 0 && !(e.metaKey || e.ctrlKey || e.shiftKey)) OPENING = $(".cover", c); // it grows into the episode

@@ -26,6 +26,8 @@ All prompts are in `agents/prompts.py`. `pipeline.py` runs the agents in order.
 - **Overlapping speech.** The writer adds backchannels (a listener's quick "hmm" or "right" while the other person
   talks) and cut-ins (someone starts before the other finishes). In the audio, a backchannel plays quietly in a pause
   of the other line, which carries on. A cut-in starts before the other line ends, which then stops dead or fades out.
+  The pause before each reply varies (a quick reply, a longer think, now and then a reply that starts just before the
+  other person finishes) and stays the same each time the episode is built.
 - **Word-level critics.** The fact-checker and editor point at the exact words to change and give replacements, which
   are patched into the line, so a fix does not disturb the rest of the segment. When a segment already has more
   English than its mix allows, fixes that put English in place of native words are dropped.
@@ -80,7 +82,8 @@ Click the square beside an episode's title to give it a cover image (cropped to 
 - **Research:** run research again.
 - **Script:** edit any line and choose how it starts (own turn, filler while the other keeps talking, cuts in with a
   hard stop, cuts in with a fade), review or fix a segment, or rewrite a segment with a note.
-- **Audio:** pick voices and re-roll a single line's audio.
+- **Audio:** pick voices and re-roll a single line's audio. While the episode plays, its chapter and line light up
+  and the line list follows along; click a chapter or a line to play from there.
 
 "Make the whole episode" runs every step in one go. Long steps run as background jobs while the page shows what the
 agents are doing.
@@ -104,7 +107,7 @@ Each episode gets its own folder, `$PODCAST_RUNS/<timestamp>_<lang>_<topic>_<id>
 | `episode.json` | everything about the episode: plan, facts, script, agent log, audio settings (see `episode.py`) |
 | `calls.jsonl` | every LLM prompt and response |
 | `audio/` | one clip per line |
-| `episode.mp3`, `episode.wav` | the mixed episode |
+| `episode.mp3`, `episode.wav` | the mixed episode at podcast loudness (-19 LUFS, mono); the MP3 has the segments as chapters |
 
 The Script tab downloads the script as `script.txt` (to read) or `script.json` (for other programs; overlapping lines
 carry a `mode`: `backchannel`, `cut` or `fade`). The command line prints the script when it finishes.
