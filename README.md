@@ -51,7 +51,7 @@ set -a; . ./.env; set +a
 
 | Variable | Needed for | Notes |
 |---|---|---|
-| `LLM_BASE_URL`, `LLM_MODEL`, `LLM_API_KEY` | everything | any OpenAI-compatible chat endpoint; built with Gemma 4 31B |
+| `LLM_BASE_URL`, `LLM_MODEL`, `LLM_API_KEY` | everything | any OpenAI-compatible chat endpoint, such as OpenRouter (`.env.example`) or a local vLLM server; built with Gemma 4 31B |
 | `TAVILY_API_KEY` | web search | optional; without it research uses Wikipedia only. A basic search costs 1 credit |
 | `CONTACT_EMAIL` | Wikipedia | sent in the User-Agent, as Wikimedia's policy asks; anonymous clients get throttled |
 | `TTS_BASE_URL`, `TTS_MODEL`, `TTS_API_KEY`, `TTS_VOICES` | audio | OpenAI-style `POST /audio/speech`, such as Bodhan's `indic-speak` (`.env.example` has its settings); every request sends `instructions` = `{"lang": <episode language>}`. `TTS_VOICES` is a comma-separated list of `name:gender:lang` |
@@ -170,6 +170,8 @@ Course runs on our cluster:
 - Episodes are saved under `/projects/data/ttsteam/nikhil/runs/podcast_agent/runs/`.
 - Service scripts are in `/projects/data/ttsteam/nikhil/runs/podcast_agent/services/`: `gemma31b_local/` (vLLM,
   Gemma 4 31B), `tts_local/` (the TTS stand-in) and `web/` (the app and its Cloudflare tunnel).
+- Since 2026-10-31 the app's model is `google/gemma-4-31b-it` on OpenRouter (settings in `~/.podcast_api.env`); the
+  local vLLM server is no longer used by it.
 - Evaluation runs:
   - [langs_20261029](</projects/data/ttsteam/nikhil/runs/podcast_agent_evals/runs/langs_20261029/summary.md>): one
     episode in each of 10 Indian languages with the same settings, to find language-specific script problems (code

@@ -1,4 +1,4 @@
-"""Thin client for any OpenAI-compatible chat endpoint (local vLLM now, the course API later).
+"""Thin client for any OpenAI-compatible chat endpoint: OpenRouter, a local vLLM server, or the course API.
 
 Settings: LLM_BASE_URL, LLM_MODEL, LLM_API_KEY (config.py). Only plain chat completions are used,
 so nothing depends on the endpoint supporting tool calling or JSON mode.
@@ -11,7 +11,9 @@ from openai import OpenAI
 
 from .config import LLM_API_KEY, LLM_BASE_URL, LLM_MODEL as MODEL
 
-_client = OpenAI(base_url=LLM_BASE_URL, api_key=LLM_API_KEY, timeout=900)
+# max_retries: hosted APIs such as OpenRouter answer 429 when too many calls arrive at once (research and review run
+# up to four in parallel); the client waits and retries, longer each time
+_client = OpenAI(base_url=LLM_BASE_URL, api_key=LLM_API_KEY, timeout=900, max_retries=5)
 _lock = threading.Lock()
 
 
@@ -20,10 +22,12 @@ def chat(prompt, agent, temperature=0.7, max_tokens=4000, log=None):
     t = time.time()
     r = _client.chat.completions.create(model=MODEL, messages=[{"role": "user", "content": prompt}],
                                         temperature=temperature, max_tokens=max_tokens)
+    if not r.choices:  # some providers answer an upstream error this way instead of with an error status
+        raise ValueError(f"{agent}: the model returned no reply")
     out, finish = r.choices[0].message.content or "", r.choices[0].finish_reason
     if log:
         rec = {"agent": agent, "prompt": prompt, "output": out, "finish": finish,
-               "tokens_in": r.usage.prompt_tokens, "tokens_out": r.usage.completion_tokens,
+               "tokens_in": r.usage and r.usage.prompt_tokens, "tokens_out": r.usage and r.usage.completion_tokens,
                "seconds": round(time.time() - t, 1)}
         with _lock, open(log, "a") as f:
             f.write(json.dumps(rec, ensure_ascii=False) + "\n")
