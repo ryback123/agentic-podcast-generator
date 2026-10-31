@@ -29,8 +29,13 @@ LOUDNESS, PEAK = -19, -1.5  # LUFS: -19 for mono plays like the usual podcast -1
 OVERLAP = {"cut": 0.8, "fade": 1.5}
 CUT_KEEP = 0.45  # with a direct cut, the interrupted line keeps going this long under the cut-in (people yield within
 # 0.15-0.4 s), then stops
+TOGETHER, EARLIEST = 0.4, 1.5  # if need be a cut-in starts earlier, up to EARLIEST s before the line ends, so that
+# both voices are heard together for TOGETHER s: TTS lines often pause right there (Rahul before his last word, then
+# Ananya after her first)
 BACKCHANNEL_AT, BACKCHANNEL_GAIN = 0.4, 0.6  # a backchannel goes in the pause nearest 40% into the line (real ones
 # land 20-65% of the way into the other's turn), a bit quieter
+FRAME = int(0.02 * RATE)  # speech is told from quiet in 20 ms frames
+PER_S = RATE // FRAME  # frames a second
 PAUSE = 0.2  # a quiet stretch this long is a pause (real TTS: 0.2-1 s at clause breaks; ~0.1 s gaps are consonants)
 
 
@@ -45,15 +50,46 @@ def load_clip(path, speed=1.0):
         pad = int(0.05 * RATE)
         x = x[max(0, loud[0] - pad): loud[-1] + pad]
     rms = float(np.sqrt(np.mean(x ** 2))) if x.size else 0.0
-    return np.clip(x * (0.1 / rms), -1, 1) if rms > 0 else x  # level-match lines (~ -20 dBFS)
+    x = np.clip(x * (0.1 / rms), -1, 1) if rms > 0 else x.copy()  # level-match lines (~ -20 dBFS)
+    # The TTS service (indic-speak) stops most clips partway through the last vowel, mid-waveform, which clicks.
+    # Fade the end so the vowel dies away; the missing sound itself can only be fixed in the service.
+    end = min(len(x), int(0.05 * RATE))
+    x[len(x) - end:] *= np.linspace(1, 0, end)
+    return x
+
+
+def _loud(x):
+    """Per 20 ms frame of x: True where there is speech (lines are level-matched to rms 0.1)."""
+    n = len(x) // FRAME
+    return np.sqrt((x[: n * FRAME].reshape(n, FRAME) ** 2).mean(1)) >= 0.015
+
+
+def _cut_in(fx, x, mode):
+    """(start, stop) in fx, the line holding the floor, for the cut-in x: x starts at `start`, and with a direct cut
+    fx stops at `stop`, once it has sounded CUT_KEEP under x (pauses don't count). The start is OVERLAP[mode] before
+    fx ends, or the latest earlier one (see TOGETHER) where both are heard together long enough; failing that, the one
+    where they are heard together longest. Never before halfway through fx."""
+    a, b = _loud(fx), _loud(x)
+    half = len(a) // 2
+    best = (-1, 0, len(fx))
+    first, last = (max(half, len(a) - round(s * PER_S)) for s in (OVERLAP[mode], EARLIEST))
+    for j in range(first, last - 1, -1):
+        spoken = np.flatnonzero(np.cumsum(a[j:]) >= CUT_KEEP * PER_S) if mode == "cut" else []
+        e = j + spoken[0] + 1 if len(spoken) else len(a)
+        m = min(e - j, len(b))
+        both = int((a[j:j + m] & b[:m]).sum())
+        if both > best[0]:
+            best = (both, j * FRAME, e * FRAME if e < len(a) else len(fx))
+        if both >= TOGETHER * PER_S:
+            break
+    return best[1:]
 
 
 def _pause_near(x, at, earliest):
     """Start (sample) of the pause nearest `at` (a fraction of the line), at or after `earliest` and before the last
     10% of the line; None if there is none."""
-    f = int(0.02 * RATE)
-    n = len(x) // f
-    quiet = np.sqrt((x[: n * f].reshape(n, f) ** 2).mean(1)) < 0.015  # lines are level-matched to rms 0.1
+    f = FRAME
+    quiet = ~_loud(x)
     edges = np.diff(np.concatenate([[0], quiet.astype(np.int8), [0]]))
     runs = zip(np.flatnonzero(edges == 1) * f, np.flatnonzero(edges == -1) * f)
     ok = [s for s, e in runs if e - s >= PAUSE * RATE and earliest <= s <= 0.9 * len(x)]
@@ -91,10 +127,9 @@ def mix(clips, gaps=None):
             continue
         if mode in OVERLAP and floor is not None:
             fs, fx = placed[floor]
-            k = max(len(fx) // 2, len(fx) - int(OVERLAP[mode] * RATE))  # where the cut-in starts, within the line
+            k, keep = _cut_in(fx, x, mode)
             fx = fx.copy()
             if mode == "cut":
-                keep = min(len(fx), k + int(CUT_KEEP * RATE))
                 ramp = min(keep, int(0.02 * RATE))  # 20 ms, so the stop does not click
                 fx = fx[:keep]
                 fx[keep - ramp:] *= np.linspace(1, 0, ramp)

@@ -8,7 +8,7 @@ from types import SimpleNamespace
 import numpy as np
 
 from podcast_agent.audio import tts
-from podcast_agent.audio.mix import BACKCHANNEL_GAIN, RATE as R, _pause_near, mix, pauses
+from podcast_agent.audio.mix import BACKCHANNEL_GAIN, RATE as R, _pause_near, load_clip, mix, pauses
 from podcast_agent.audio.tts import lines, stitch
 from podcast_agent.config import parse_voices
 
@@ -88,10 +88,28 @@ def test_cut_ins_stop_or_fade_the_line_they_interrupt():
     cut = track([(0, "", TWO), (0, "cut", ONE)])
     assert len(cut) == int(2.2 * R)  # starts 0.8 s before line 1 ends
     assert abs(cut[int(1.6 * R)] - 0.2) < 1e-6 and abs(cut[int(1.7 * R)] - 0.1) < 1e-6  # both for 0.45 s, then it stops
+    paused = np.concatenate([ONE, np.zeros(int(0.4 * R), np.float32), ONE[: int(0.6 * R)]])  # 2 s, quiet 1.0-1.4 s
+    cut = track([(0, "", paused), (0, "cut", ONE)])  # starts at 1.2 s, in the pause: the pause doesn't count
+    assert abs(cut[int(1.7 * R)] - 0.2) < 1e-6 and abs(cut[int(1.95 * R)] - 0.1) < 1e-6  # both from 1.4 s, stops ~1.86
+    # Opening Hook 5-6 of the Poland episode: the line pauses before its last word, the cut-in after its first, so at
+    # 0.8 s before the end they are heard together only 0.3 s; the cut-in starts earlier, at 1.14 s, to get 0.4 s
+    q = lambda s: np.zeros(int(s * R), np.float32)  # noqa: E731
+    line = np.concatenate([TWO[: int(1.4 * R)], q(0.4), ONE[: int(0.2 * R)]])
+    cutin = np.concatenate([ONE[: int(0.3 * R)], q(0.4), ONE])
+    assert abs(mix([(0, "", line), (0, "cut", cutin)])[1][1][0] - 1.14) < 1e-6
     fade = track([(0, "", TWO), (0, "fade", ONE)])  # 2 s line: the cut-in starts halfway, not 1.5 s before its end
     assert len(fade) == 2 * R and abs(fade[int(1.4 * R)] - 0.2) < 1e-3  # both at full for half the overlap
     assert abs(fade[int(1.75 * R)] - 0.15) < 1e-3 and abs(fade[-1] - 0.1) < 1e-3  # then line 1 fades out under it
     assert len(track([(0, "", ONE), (0, "fade", ONE)])) == int(1.5 * R)  # short line: cut-in no earlier than halfway
+
+
+def test_a_clip_cut_off_mid_sound_fades_out(tmp_path):
+    t = np.arange(R) / R  # 1 s tone that stops at full swing, as the TTS service's clips often do
+    with wave.open(str(tmp_path / "c.wav"), "wb") as w:
+        w.setnchannels(1), w.setsampwidth(2), w.setframerate(R)
+        w.writeframes((0.3 * np.sin(2 * np.pi * 220 * t + 1) * 32767).astype(np.int16).tobytes())
+    x = load_clip(tmp_path / "c.wav")
+    assert abs(x[-1]) < 1e-3 and np.abs(x[-int(0.1 * R):-int(0.08 * R)]).max() > 0.1  # no click; full until the end
 
 
 def test_no_overlap_across_segments():
