@@ -104,6 +104,15 @@ def test_only_a_line_cut_off_with_a_dash_is_talked_over():
     lines = [("", "So the bank checks the—"), ("cut", "the PIN?"), ("fade", "Right, and then"), ("backchannel", "hmm"),
              ("cut", "But—"), ("fade", "Wait")]
     assert modes(lines) == ["", "cut", "", "backchannel", "", "fade"]  # a question is answered, not talked over
+    assert modes([("", "So who removed them?"), ("backchannel", "हाँ।")]) == ["", ""]  # a filler answering it waits too
+
+
+def test_a_filler_after_a_cut_in_waits_for_its_speaker_to_finish():
+    # Chaos 17-19 (Poland): Rahul cuts in on Ananya's line, Ananya's filler goes in his line; at 40% of it she would
+    # still be saying her own line
+    TWO = np.full(2 * R, 0.1, np.float32)
+    spans = mix([(0, "", TWO), (0, "fade", ONE), (0, "backchannel", ONE[: R // 4])])[1]
+    assert spans[1][0] == 1.4 and abs(spans[2][0] - 2.1) < 1e-6  # not at 1.8 s: line 1 runs to 2.0 s, then a breath
 
 
 def test_a_clip_cut_off_mid_sound_fades_out(tmp_path):

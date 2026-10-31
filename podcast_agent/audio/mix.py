@@ -31,6 +31,7 @@ LOUDNESS, PEAK = -19, -1.5  # LUFS: -19 for mono plays like the usual podcast -1
 # `late` s before that line ends, or earlier (up to `early` s, never before halfway) until both voices are heard
 # together for `together` s. TTS lines often pause right there: Rahul before his last word, Ananya after her first.
 OVERLAP = {"cut": (0.25, 1.0, 0.3), "fade": (0.6, 1.5, 0.5)}
+BREATH = 0.1  # the least time between two things one person says
 BACKCHANNEL_AT, BACKCHANNEL_GAIN = 0.4, 0.6  # a backchannel goes in the pause nearest 40% into the line (real ones
 # land 20-65% of the way into the other's turn), a bit quieter
 FRAME = int(0.02 * RATE)  # speech is told from quiet in 20 ms frames
@@ -82,10 +83,14 @@ def _cut_in(fx, x, mode):
 
 def modes(lines):
     """lines: [(mode, text)] in script order -> the mode each line is mixed with. A cut-in or talk-over overlaps only
-    a line the script cut off with a dash; after a finished line, such as a question, it waits like any reply."""
+    a line the script cut off with a dash, and a filler plays inside a line only if it is not a question. Otherwise
+    either waits for the line to end like any reply: "हाँ।" answers "…मुश्किल है?" after Rahul has asked it."""
     out, floor = [], ""
     for mode, text in lines:
-        out.append("" if mode in OVERLAP and not floor.rstrip().endswith(CUT_OFF) else mode)
+        end = floor.rstrip()
+        if (mode in OVERLAP and not end.endswith(CUT_OFF)) or (mode == "backchannel" and end.endswith(("?", "？"))):
+            mode = ""
+        out.append(mode)
         floor = text if mode != "backchannel" else floor
     return out
 
@@ -116,7 +121,8 @@ def pauses(lines, seed):
 def mix(clips, gaps=None):
     """clips: [(segment, mode, samples)] in script order -> (track, spans), spans[i] = (start, end) of clip i in
     seconds. Normal lines follow each other after gaps[i] (default GAP_TURN; negative overlaps the last line's end).
-    A backchannel plays in a pause of the line holding the floor, which carries on. A cut-in overlaps the last words
+    A backchannel plays in a pause of the line holding the floor, which carries on (after a cut-in, not before the
+    line it cut into has ended, so its speaker is free). A cut-in overlaps the last words
     of that line, which plays to its end (cut) or fades out underneath (fade). Nothing overlaps across segments."""
     placed, floor, end, seg0 = [], None, 0, None  # placed: [(start sample, samples)]; floor: index into placed
     bc_from = 0  # the next backchannel starts after the last one on the same line ends
@@ -130,9 +136,11 @@ def mix(clips, gaps=None):
             placed.append((fs + k, x * BACKCHANNEL_GAIN))
             bc_from, end = k + len(x), max(end, fs + k + len(x))
             continue
+        busy = 0  # a cut-in's filler waits until the line it cut into has ended: nobody says two things at once
         if mode in OVERLAP and floor is not None:
             fs, fx = placed[floor]
             k = _cut_in(fx, x, mode)
+            busy = len(fx) - k + int(BREATH * RATE)
             if mode == "fade":
                 fx = fx.copy()
                 fx[k:] *= np.minimum(1, np.linspace(2, 0, len(fx) - k))  # both at full for half the overlap, then out
@@ -145,7 +153,7 @@ def mix(clips, gaps=None):
         else:  # an early start never begins before the line it overlaps
             start = max(placed[floor][0], end + int(RATE * (gaps[i] if gaps else GAP_TURN)))
         placed.append((start, x))
-        floor, end, seg0, bc_from = len(placed) - 1, start + len(x), seg, 0
+        floor, end, seg0, bc_from = len(placed) - 1, start + len(x), seg, busy
     out = np.zeros(max((s + len(x) for s, x in placed), default=0), np.float32)
     for s, x in placed:
         out[s:s + len(x)] += x
