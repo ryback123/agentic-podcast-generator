@@ -353,7 +353,8 @@ function renderVoices() {
   for (const v of V) (groups[order.includes(info[v]?.lang) ? info[v].lang : ""] ??= []).push(v);
   const keys = [...order.filter((c) => groups[c]), ...(groups[""] ? [""] : [])];
   const item = (v) => `<li><button class="play" type="button" data-act="play"
-      data-src="/api/voices/${encodeURIComponent(v)}/sample.wav" aria-label="Play a sample of ${esc(v)}">${PLAY}</button>
+      data-src="${CFG.tts.samples.includes(v) ? `/voices/${encodeURIComponent(v)}.mp3` : `/api/voices/${encodeURIComponent(v)}/sample.wav`}"
+      aria-label="Play a sample of ${esc(v)}">${PLAY}</button>
     <b>${esc(v)}</b>${info[v]?.gender ? `<span class="hint">${esc(info[v].gender)}</span>` : ""}${
       v === SETTINGS.voice_female ? '<span class="tag">female default</span>' : ""}${
       v === SETTINGS.voice_male ? '<span class="tag">male default</span>' : ""}</li>`;

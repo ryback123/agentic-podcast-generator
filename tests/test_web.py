@@ -103,3 +103,11 @@ def test_delete_moves_to_trash_and_duplicate_copies_the_request(tmp_path, monkey
     assert (tmp_path / ".trash" / "e1" / "episode.json").exists() and not (tmp_path / "e1").exists()
     assert [e["id"] for e in c.get("/api/episodes").json()] == [new]
     assert c.delete("/api/episodes/e1").status_code == 404
+
+
+def test_voice_samples_are_static_files():
+    c = TestClient(web.app)
+    samples = c.get("/api/config").json()["tts"]["samples"]
+    assert "Kavya" in samples and len(samples) == len(list(web.STATIC.glob("voices/*.mp3")))
+    r = c.get("/voices/Kavya.mp3")
+    assert r.status_code == 200 and r.headers["content-type"] == "audio/mpeg" and r.content[:3] in (b"ID3", b"\xff\xfb")

@@ -48,7 +48,8 @@ def segment_index(ep, i):
 def config():
     return {"languages": [{"code": c, "name": n, "script": s} for c, (n, s, _) in LANGS.items()],
             "code_mix": list(CODE_MIX), "model": llm.MODEL, "default_model": LLM_MODEL,
-            "tts": {"configured": tts.configured(), "voices": TTS_VOICES, "voice_info": TTS_VOICE_INFO, "model": tts.MODEL}}
+            "tts": {"configured": tts.configured(), "voices": TTS_VOICES, "voice_info": TTS_VOICE_INFO, "model": tts.MODEL,
+                    "samples": sorted(f.stem for f in (STATIC / "voices").glob("*.mp3"))}}
 
 
 def job_progress(ep, task, run):
@@ -221,7 +222,8 @@ def status():
 
 @app.get("/api/voices/{voice}/sample.wav")
 def voice_sample(voice: str):
-    """A short line in this voice, made on first play and kept in RUNS/.voices."""
+    """A short line in this voice, made on first play and kept in RUNS/.voices. Only for a voice with no sample in
+    static/voices/<voice>.mp3 (committed with the app, so the Voices tab plays those as static files)."""
     if not tts.configured() or voice not in TTS_VOICES:
         raise HTTPException(404, "no such voice")
     f = RUNS / ".voices" / f"{hashlib.sha1(f'{voice}|{tts.sample_line(voice)[0]}'.encode()).hexdigest()[:16]}.wav"

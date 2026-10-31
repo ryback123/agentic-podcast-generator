@@ -72,7 +72,9 @@ far each got) and in a bottom tab bar on a phone:
 - **Episodes:** every episode, with search and filters for language and state; a count on the tab shows how many
   are being made. An episode's page has Duplicate (the same request, planned afresh) and Delete, which moves its folder
   to `.trash/` in the episodes folder.
-- **Voices:** a sample of each TTS voice, and the default voice for female and male speakers.
+- **Voices:** a sample of each TTS voice, and the default voice for female and male speakers. The samples are in
+  `web/static/voices/` (one MP3 per voice, about 16 KB each), so they are not made again; a voice added later gets
+  its sample made on first play.
 - **Settings:** defaults for new episodes, the model every agent uses (type any model the model service offers;
   with OpenRouter it shows the price and about what an episode costs), the research step budget, review rounds per segment, web search on or off,
   audio speed (applied when an episode's audio is built, pitch unchanged), light or dark, and whether the model, web search and TTS are working. Saved in `settings.json` in the episodes
@@ -157,6 +159,7 @@ podcast_agent/
     ├── jobs.py        background jobs, one per episode at a time
     ├── settings.py    the Settings tab's values, saved as settings.json in the episodes folder
     └── static/        the browser UI (plain JS, no build step)
+        ├── voices/    a sample of each voice (<voice>.mp3), played on the Voices tab
         └── assets/    the logo: logo.svg is the source; icon-32.png and icon-180.png are exported from it
 tests/                 python -m pytest
 PRODUCT.md, DESIGN.md  who the app is for, and its visual system (colours, type, motion); read before UI changes
