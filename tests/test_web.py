@@ -4,6 +4,7 @@ import json
 import pytest
 from fastapi.testclient import TestClient
 
+from podcast_agent.audio import tts
 from podcast_agent.web import app as web
 from podcast_agent.web import jobs, settings
 
@@ -38,6 +39,19 @@ def episode(run, eid, **request):
     (run / eid).mkdir()
     req = {"topic": "How UPI works", "description": "", "lang": "hi", "speakers": 3, "minutes": 10.0, "code_mix": "heavy", **request}
     (run / eid / "episode.json").write_text(json.dumps({"id": eid, "request": req, "plan": None, "facts": [], "log": []}))
+
+
+def test_running_jobs_report_how_far_they_got(tmp_path, monkeypatch):
+    plan = {"speakers": [], "segments": [{"title": "a", "turns": [["A", "x", ""]]}, {"title": "b", "turns": [["A", "y", ""]]}]}
+    ep = {"id": "e", "dir": str(tmp_path), "request": {"topic": "t", "lang": "en"}, "plan": plan, "log": [],
+          "audio": {"voices": {"A": "v"}, "takes": {}}, "questions": {"Q1": "?", "Q2": "?"}, "facts": [{"q": "Q1"}]}
+    (tmp_path / "audio").mkdir()
+    (tmp_path / tts.lines(ep)[0]["file"]).write_bytes(b"")  # one of the two lines has its audio
+    assert web.job_progress(ep, "generating audio", tmp_path) == 0.5
+    assert web.job_progress(ep, "researching", tmp_path) == 0.5
+    ep["log"].append({"agent": "writer", "event": "writing segment 2: b"})
+    assert web.job_progress(ep, "writing the script", tmp_path) == 0.5
+    assert web.job_progress(ep, "planning", tmp_path) is None
 
 
 def test_the_page_is_revalidated_on_every_load():

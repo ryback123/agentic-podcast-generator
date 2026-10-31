@@ -49,6 +49,22 @@ def config():
             "tts": {"configured": tts.configured(), "voices": TTS_VOICES, "voice_info": TTS_VOICE_INFO, "model": tts.MODEL}}
 
 
+def job_progress(ep, task, run):
+    """How far a running job got, from 0 to 1, or None when there is no way to tell (planning, a whole-episode run)."""
+    segs = (ep.get("plan") or {}).get("segments") or []
+    if task == "generating audio" or task.startswith("new take"):
+        ls = [ln for ln in tts.lines(ep) if ln["file"]]
+        return sum((run / ln["file"]).exists() for ln in ls) / len(ls) if ls else None
+    if (task == "writing the script" or task.startswith("rewrite segment")) and segs:
+        last = next((e["event"] for e in reversed(ep.get("log", [])) if e.get("agent") == "writer"
+                     and e.get("event", "").startswith("writing segment ")), None)
+        return (int(last.split()[2].rstrip(":")) - 1) / len(segs) if last else 0.0
+    if task == "researching" and ep.get("questions"):
+        found = {f.get("q") for f in ep.get("facts", [])}
+        return sum(q in found for q in ep["questions"]) / len(ep["questions"])
+    return None
+
+
 @app.get("/api/episodes")
 def list_episodes():
     out = []
@@ -66,6 +82,7 @@ def list_episodes():
                     "speakers": len(plan.get("speakers") or []) or ep["request"].get("speakers"),
                     "minutes": (ep.get("stats") or {}).get("est_minutes"),
                     "running": job.get("running", False), "task": job.get("task"), "cover": cover_name(f.parent),
+                    "progress": job_progress(ep, job["task"], f.parent) if job.get("running") else None,
                     "has_script": any(s.get("turns") for s in plan.get("segments", [])),
                     "has_audio": bool((ep.get("audio") or {}).get("episode"))})
     return out
