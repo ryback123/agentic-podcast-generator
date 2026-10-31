@@ -78,7 +78,8 @@ far each got) and in a bottom tab bar on a phone:
   folder; server addresses and keys stay in the environment.
 
 Click the square beside an episode's title to give it a cover image (cropped to a square in the browser; saved as
-`cover.jpg` in the episode folder). An episode walks through Plan → Research → Script → Audio:
+`cover.jpg` in the episode folder). An episode walks through Plan → Research → Script → Audio. When a step is done,
+a bar at the foot of its tab opens the next step and starts it (or only opens it, if that step already has output):
 
 - **Plan:** edit the cast and outline. Speaker names are made up by the producer; rename anyone at any time, and the
   script lines and voice choices follow. Each speaker has a persona, a few sentences on who they are and how they

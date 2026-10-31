@@ -527,6 +527,21 @@ function stepState(k) {
   return k === liveStep() ? "live" : done ? "done" : "";
 }
 
+// Once a step is done, a bar at the foot of its tab opens the next step and starts it. When the next step already
+// has output it only opens it, so a click never replaces finished work.
+const NEXT = { plan: "research", research: "script", script: "audio" };
+const NEXT_START = { research: "Next: run research", script: "Next: write the script", audio: "Next: generate audio" };
+const startsNext = (k) => stepState(k) !== "done" && (k !== "audio" || CFG.tts.configured);
+function nextBar() {
+  const k = NEXT[TAB];
+  if (!k || EP.job.running || stepState(TAB) !== "done") return "";
+  const note = { plan: "The plan is ready.", research: `Research found ${EP.facts.length} facts.`,
+    script: `The script is written${EP.stats ? `, about ${EP.stats.est_minutes} minutes` : ""}.` }[TAB];
+  return `<div class="next${fresh(`n|${TAB}`)}"><p>${CHECK}${note}</p>${startsNext(k)
+    ? `<button class="btn btn-primary" type="button" data-act="next">${NEXT_START[k]}</button>`
+    : `<button class="btn" type="button" data-act="next">Open ${STEPS.find(([s]) => s === k)[1]}</button>`}</div>`;
+}
+
 const progBar = (p) => `<span class="prog ${p == null ? "busy" : ""}" aria-hidden="true"><i style="width:${Math.round((p ?? 0) * 100)}%"></i></span>`;
 let SEEN = null; // what this step has shown, so items that arrive during a job can be told apart
 function fresh(key) {
@@ -576,7 +591,7 @@ function render() {
       return `<a class="${st}" href="#/ep/${EP.id}/${k}" ${k === TAB ? 'aria-current="page"' : ""}>
         <span class="l">${mark}${l}</span><small>${stepNote(k) || "&nbsp;"}</small>${st === "live" ? progBar(stepProgress(k)) : ""}</a>`;
     }).join("")}</nav>
-    <div class="work"><fieldset class="stage" ${job.running && TAB !== "audio" ? "disabled" : ""}>${VIEWS[TAB]()}</fieldset>${cue()}</div>`);
+    <div class="work"><fieldset class="stage" ${job.running && TAB !== "audio" ? "disabled" : ""}>${VIEWS[TAB]()}${nextBar()}</fieldset>${cue()}</div>`);
   const same = listening && $(`main audio[src="${listening.getAttribute("src")}"]`);
   if (same) { // taking it out of the page paused it; carry on from the same place
     const resume = !listening.paused;
@@ -631,7 +646,7 @@ const VIEWS = {
         <span class="hint">Total ${p.segments.reduce((a, s) => a + (+s.minutes || 0), 0)} minutes</span></div></section>
     <div class="bar">
       <button class="btn btn-primary" data-act="savePlan">Save plan</button>
-      <button class="btn" data-act="research">${EP.facts.length ? "Save and research again" : "Save and start research"}</button>
+      ${EP.facts.length ? '<button class="btn" data-act="research">Save and research again</button>' : ""}
       <span class="grow"></span>
       <button class="btn btn-quiet" data-act="replan">Plan again from scratch</button>
     </div>`;
@@ -645,7 +660,8 @@ const VIEWS = {
     const pages = new Set(EP.facts.map((f) => f.url)).size;
     return `<div class="bar">
         <button class="btn btn-primary" data-act="research">${EP.facts.length ? "Research again" : "Run research"}</button>
-        <button class="btn" data-act="writeAll">${hasScript() ? "Rewrite the whole script" : "Write the script"}</button>
+        ${hasScript() ? '<button class="btn" data-act="writeAll">Rewrite the whole script</button>'
+          : EP.facts.length ? "" : '<button class="btn" data-act="writeAll">Write the script</button>'}
         <span class="grow"></span><span class="hint">${EP.facts.length} facts from ${pages} pages${EP.research_stats ? `, ${EP.research_stats.credits} web search credits` : ""}</span></div>
       ${qs.length ? `<div class="qs">${qs.map(([q, t], qi) => {
         const fs = EP.facts.filter((f) => f.q === q);
@@ -884,6 +900,17 @@ const ACTIONS = {
     if (s.turns?.length && !confirm(`Remove "${s.title}" and its ${s.turns.length} script lines?`)) return;
     EP.plan.segments.splice(+b.dataset.i, 1);
     render();
+  },
+  next: async () => { // see nextBar
+    const k = NEXT[TAB], open = () => { location.hash = `#/ep/${EP.id}/${k}`; };
+    if (!startsNext(k)) return open();
+    try {
+      if (dirty.size) await saveDirty();
+      if (TAB === "plan") await api("PUT", `/api/episodes/${EP.id}/plan`, collectPlan());
+      await api("POST", `/api/episodes/${EP.id}/${{ research: "research", script: "write", audio: "audio" }[k]}`,
+        k === "audio" ? { voices: pickVoices(EP.plan.speakers, EP.audio?.voices || {}, EP.request.lang) } : {});
+      open();
+    } catch (e) { toast(e.message, true); }
   },
   writeAll: () => (!hasScript() || confirm("Rewrite every segment? Your edits are replaced.")) && act("POST", "/write", {}),
   writeMissing: () => act("POST", "/write", { only_missing: true }),
