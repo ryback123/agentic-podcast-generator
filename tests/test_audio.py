@@ -65,8 +65,8 @@ def test_pauses_vary_but_stay_put():
     talk = [("A", ""), ("B", "")] * 200
     p = pauses(talk, 3)
     assert p == pauses(talk, 3) and p != pauses(talk, 4)  # the same each build of an episode
-    early, median = sum(x < 0 for x in p) / len(p), sorted(p)[len(p) // 2]
-    assert 0.1 < early < 0.22 and 0.35 < median < 0.55 and max(p) <= 1.4  # like real handovers: 16% early, median 0.46
+    median = sorted(p)[len(p) // 2]
+    assert min(p) >= 0.1 and 0.35 < median < 0.55 and max(p) <= 1.4  # like real handovers (median 0.46), none early
     after_filler = pauses([("A", ""), ("B", "backchannel"), ("A", "")] * 50, 3)[2::3]
     assert min(after_filler) >= 0.2  # A still holds the floor: carrying on after a filler is a breath, never overlap
 

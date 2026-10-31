@@ -13,8 +13,8 @@ from .prompts import CONTEXT, EDITOR, FACTCHECK, REVISE, SAMPLE, WRITER, fact_li
 
 # Fillers and interruptions in real two-person conversation (IndicVoices conversations, each speaker on their own
 # channel, measured in OverlapForge, a diarization data project): about 5.7 backchannels a minute. About 19% of
-# handovers overlap without being a backchannel, half of them only on the last word, which the mixer's early starts
-# give (audio/mix.py REPLY). That leaves about one handover in ten as a written overlap, and 35-45% of those are
+# handovers overlap without being a backchannel, half of them only on the last word, which the mixer leaves out
+# (audio/mix.py REPLY). That leaves about one handover in ten as a written overlap, and 35-45% of those are
 # competitive (a sharp cut-in rather than talking over).
 BACKCHANNELS_PER_MIN, OVERLAP_SHARE, CUT_SHARE = 5.7, 0.1, 0.4
 
@@ -61,8 +61,15 @@ def segment_context(ep, i, note=None):
                         (" (done)" if k < i else "  <- THIS SEGMENT" if k == i else " (later)")
                         for k, s in enumerate(segs))
     if i == 0:
-        position = (f"This is the opening. Start with the hook ({plan.get('hook', 'a surprising fact')}), then the "
-                    "speakers introduce themselves naturally and say what the episode will cover.")
+        host = next((s for s in plan["speakers"] if "host" in s["role"].lower()), plan["speakers"][0])
+        guests = [s["name"] for s in plan["speakers"] if s is not host]
+        others = " and ".join(guests)
+        position = (f"This is the opening. {host['name']} speaks first: greets the listeners (hi, hello or namaste, as "
+                    f"people say it in {LANGS[lang][0]}), says their own name, introduces {others} and what they know, "
+                    f"and names the topic, in one or two lines. Then {others} {'each say' if len(guests) > 1 else 'says'} "
+                    f"a short hello of their own. Only after that comes the hook ({plan.get('hook', 'a surprising fact')}), "
+                    f"told plainly (not as \"imagine...\" or \"picture this...\" in any language), and then what the "
+                    f"episode will cover.")
         facts = [next(f for f in ep["facts"] if f["q"] == q) for q in ep["questions"]
                  if any(f["q"] == q for f in ep["facts"])][:6]
     elif i == len(segs) - 1:

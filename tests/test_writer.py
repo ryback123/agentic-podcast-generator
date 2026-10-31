@@ -108,6 +108,13 @@ def test_overlaps_are_rare_spread_out_and_shared(tmp_path):
     assert writer.overlap_rule([]).startswith("In this segment nobody cuts in")
 
 
+def test_the_host_opens_and_introduces_the_others(tmp_path):
+    ep = episode(tmp_path)
+    ep["plan"]["speakers"][0]["role"] = "expert"  # the host is found by role, wherever they are listed
+    ctx, _ = writer.segment_context(ep, 0)
+    assert "RAVI speaks first" in ctx and "introduces ASHA" in ctx and "Then ASHA says a short hello" in ctx
+
+
 def test_sample_lines_are_cleaned(tmp_path, model):
     calls, replies = model
     replies.update(sample=['1. "It is a fake wanted poster."\n\n- RAVI: Wait, so the body practises?\n* Fine. Prove it.\nOne too many.'])

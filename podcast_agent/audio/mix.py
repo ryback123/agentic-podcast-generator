@@ -15,9 +15,11 @@ GAP_TURN, GAP_SEGMENT = 0.25, 0.8  # pause between lines when none is given (tes
 # Negative: the reply starts that much before the last line ends.
 SAME_SPEAKER = (0.2, 0.5)  # the same speaker going on after a filler: a breath (pauses within a turn average 0.45 s)
 # The pause before a reply, as 5% quantiles of 2,902 Hindi and Tamil handovers (speech edges trimmed), less the clips'
-# 0.1 s. Kept: from 0.4 s of overlap (the next speaker starting on the last word) to 1.5 s of silence. Deeper
-# overlaps are the script's cut-ins and fillers; longer silences are dead air a podcast edits out. 16% start early.
-REPLY = [-0.5, -0.39, -0.25, -0.13, 0.02, 0.12, 0.19, 0.26, 0.34, 0.4, 0.46,
+# 0.1 s. Kept: from 0.4 s of overlap to 1.5 s of silence; deeper overlaps are the script's cut-ins and fillers, longer
+# silences are dead air a podcast edits out. A reply never starts early, though: in real talk 16% do, on the last
+# word, but a TTS line laid over it garbles that word (in Hindi often the question word, "किसने?"). Those replies
+# start 0.1 s after the line instead, so the pace stays the same.
+REPLY = [0.1, 0.1, 0.1, 0.1, 0.1, 0.12, 0.19, 0.26, 0.34, 0.4, 0.46,
          0.54, 0.61, 0.68, 0.77, 0.85, 0.95, 1.04, 1.15, 1.28, 1.4]
 LOUDNESS, PEAK = -19, -1.5  # LUFS: -19 for mono plays like the usual podcast -16 for stereo; peaks stay below -1.5 dBFS
 # Overlaps (line modes, see episode.py). ponytail: fixed timings; anchor cut-ins to word timings from the TTS/ASR
