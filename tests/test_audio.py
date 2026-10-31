@@ -8,7 +8,7 @@ from types import SimpleNamespace
 import numpy as np
 
 from podcast_agent.audio import tts
-from podcast_agent.audio.mix import BACKCHANNEL_GAIN, RATE as R, _pause_near, load_clip, mix, pauses
+from podcast_agent.audio.mix import BACKCHANNEL_GAIN, RATE as R, _pause_near, load_clip, mix, modes, pauses
 from podcast_agent.audio.tts import lines, stitch
 from podcast_agent.config import parse_voices
 
@@ -83,24 +83,27 @@ def test_filler_goes_in_a_pause_of_the_line_it_reacts_to():
     assert _pause_near(np.concatenate([ONE, gap[: R // 10], ONE]), 0.5, 0) is None  # 0.1 s gaps are not pauses
 
 
-def test_cut_ins_stop_or_fade_the_line_they_interrupt():
+def test_cut_ins_overlap_the_last_words_of_the_line_they_interrupt():
     TWO = np.full(2 * R, 0.1, np.float32)
     cut = track([(0, "", TWO), (0, "cut", ONE)])
-    assert len(cut) == int(2.2 * R)  # starts 0.8 s before line 1 ends
-    assert abs(cut[int(1.6 * R)] - 0.2) < 1e-6 and abs(cut[int(1.7 * R)] - 0.1) < 1e-6  # both for 0.45 s, then it stops
-    paused = np.concatenate([ONE, np.zeros(int(0.4 * R), np.float32), ONE[: int(0.6 * R)]])  # 2 s, quiet 1.0-1.4 s
-    cut = track([(0, "", paused), (0, "cut", ONE)])  # starts at 1.2 s, in the pause: the pause doesn't count
-    assert abs(cut[int(1.7 * R)] - 0.2) < 1e-6 and abs(cut[int(1.95 * R)] - 0.1) < 1e-6  # both from 1.4 s, stops ~1.86
-    # Opening Hook 5-6 of the Poland episode: the line pauses before its last word, the cut-in after its first, so at
-    # 0.8 s before the end they are heard together only 0.3 s; the cut-in starts earlier, at 1.14 s, to get 0.4 s
+    assert len(cut) == int(2.7 * R)  # starts 0.3 s before line 1 ends: both heard together for 0.3 s
+    assert abs(cut[int(1.8 * R)] - 0.2) < 1e-6 and abs(cut[int(2.1 * R)] - 0.1) < 1e-6  # line 1 plays to its end
+    # Opening Hook 5-6 of the Poland episode: the line pauses before its last word, the cut-in after its first, so near
+    # the end they are hardly heard together; the cut-in starts 0.8 s before the end, where they are
     q = lambda s: np.zeros(int(s * R), np.float32)  # noqa: E731
     line = np.concatenate([TWO[: int(1.4 * R)], q(0.4), ONE[: int(0.2 * R)]])
     cutin = np.concatenate([ONE[: int(0.3 * R)], q(0.4), ONE])
-    assert abs(mix([(0, "", line), (0, "cut", cutin)])[1][1][0] - 1.14) < 1e-6
-    fade = track([(0, "", TWO), (0, "fade", ONE)])  # 2 s line: the cut-in starts halfway, not 1.5 s before its end
-    assert len(fade) == 2 * R and abs(fade[int(1.4 * R)] - 0.2) < 1e-3  # both at full for half the overlap
-    assert abs(fade[int(1.75 * R)] - 0.15) < 1e-3 and abs(fade[-1] - 0.1) < 1e-3  # then line 1 fades out under it
+    assert abs(mix([(0, "", line), (0, "cut", cutin)])[1][1][0] - 1.2) < 1e-6
+    fade = track([(0, "", TWO), (0, "fade", ONE)])  # starts 0.6 s before line 1 ends
+    assert len(fade) == int(2.4 * R) and abs(fade[int(1.5 * R)] - 0.2) < 1e-3  # both at full for half the overlap
+    assert abs(fade[int(1.85 * R)] - 0.15) < 1e-3 and abs(fade[int(2.2 * R)] - 0.1) < 1e-3  # then line 1 fades out
     assert len(track([(0, "", ONE), (0, "fade", ONE)])) == int(1.5 * R)  # short line: cut-in no earlier than halfway
+
+
+def test_only_a_line_cut_off_with_a_dash_is_talked_over():
+    lines = [("", "So the bank checks the—"), ("cut", "the PIN?"), ("fade", "Right, and then"), ("backchannel", "hmm"),
+             ("cut", "But—"), ("fade", "Wait")]
+    assert modes(lines) == ["", "cut", "", "backchannel", "", "fade"]  # a question is answered, not talked over
 
 
 def test_a_clip_cut_off_mid_sound_fades_out(tmp_path):

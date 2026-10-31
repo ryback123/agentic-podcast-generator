@@ -42,6 +42,7 @@ from .config import RUNS
 from .languages import CODE_MIX, LANGS, chars_per_min
 
 TAGS = {"backchannel": "backchannel", "cut": "cuts in", "fade": "talks over"}  # mode -> tag in "NAME (tag): text"
+CUT_OFF = ("—", "–", "-")  # a line someone cuts into or talks over ends with one of these, mid-sentence
 LINE = re.compile(r"^\s*([A-Za-z]+)\s*(?:\(([A-Za-z ]+)\))?\s*:\s*(.+?)\s*$")
 
 

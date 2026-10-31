@@ -38,9 +38,13 @@ def test_repeats_length_and_stock_openers():
 
 
 def test_fillers_and_cut_ins():
-    ok = [("PRIYA", "So the bank checks the—", ""), ("ARJUN", "हम्म", "backchannel"), ("PRIYA", "and then it pays", ""),
+    ok = [("PRIYA", "So the bank checks the—", ""), ("ARJUN", "हम्म", "backchannel"), ("PRIYA", "and then it pays—", ""),
           ("ARJUN", "Wait, who pays?", "cut")]
-    assert not any("must come right after" in i for i in check_segment(ok, [], "en", "medium", 60, [])), ok
+    assert not any("must come right after" in i or "finished" in i for i in check_segment(ok, [], "en", "medium", 60, []))
+    late = check_segment(ok + [("PRIYA", "The bank does.", "fade")], [], "en", "medium", 75, [])  # talks over a question
+    assert [i for i in late if "finished" in i] == [
+        "Line 5 talks over, but line 4 is a finished sentence, so the audio plays line 5 as an ordinary reply. Cut line 4 "
+        "off mid-sentence with a dash (—), for example by dropping its last words."]
     iss = check_segment([("ARJUN", "first line", "cut"), ("PRIYA", "ok", ""), ("PRIYA", "me again", "backchannel"),
                          ("ARJUN", "hmm right yes sure okay", "backchannel")], [], "en", "medium", 50, [])
     assert sum("must come right after" in i for i in iss) == 2 and any("word or two" in i for i in iss), iss

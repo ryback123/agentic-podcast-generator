@@ -7,6 +7,8 @@ import subprocess
 
 import numpy as np
 
+from ..episode import CUT_OFF
+
 RATE = 24000
 GAP_TURN, GAP_SEGMENT = 0.25, 0.8  # pause between lines when none is given (tests), and between segments
 # Timings below come from real two-person conversation: IndicVoices conversations with each speaker on their own
@@ -24,14 +26,11 @@ REPLY = [0.1, 0.1, 0.1, 0.1, 0.1, 0.12, 0.19, 0.26, 0.34, 0.4, 0.46,
 LOUDNESS, PEAK = -19, -1.5  # LUFS: -19 for mono plays like the usual podcast -16 for stereo; peaks stay below -1.5 dBFS
 # Overlaps (line modes, see episode.py). ponytail: fixed timings; anchor cut-ins to word timings from the TTS/ASR
 # if they land awkwardly.
-# A cut-in starts this many seconds before the interrupted line ends, so both voices are heard for a moment. (At 0.5
-# and 1.0 s they overlapped for only ~0.1 s that you could hear: a line's last half second is mostly trailing off.)
-OVERLAP = {"cut": 0.8, "fade": 1.5}
-CUT_KEEP = 0.45  # with a direct cut, the interrupted line keeps going this long under the cut-in (people yield within
-# 0.15-0.4 s), then stops
-TOGETHER, EARLIEST = 0.4, 1.5  # if need be a cut-in starts earlier, up to EARLIEST s before the line ends, so that
-# both voices are heard together for TOGETHER s: TTS lines often pause right there (Rahul before his last word, then
-# Ananya after her first)
+# A cut-in overlaps the last words of the line it interrupts, which the script already cut off mid-sentence; that line
+# plays to its end ("cut") or fades out under the cut-in ("fade"). Per mode, (late, early, together): the cut-in starts
+# `late` s before that line ends, or earlier (up to `early` s, never before halfway) until both voices are heard
+# together for `together` s. TTS lines often pause right there: Rahul before his last word, Ananya after her first.
+OVERLAP = {"cut": (0.25, 1.0, 0.3), "fade": (0.6, 1.5, 0.5)}
 BACKCHANNEL_AT, BACKCHANNEL_GAIN = 0.4, 0.6  # a backchannel goes in the pause nearest 40% into the line (real ones
 # land 20-65% of the way into the other's turn), a bit quieter
 FRAME = int(0.02 * RATE)  # speech is told from quiet in 20 ms frames
@@ -65,24 +64,30 @@ def _loud(x):
 
 
 def _cut_in(fx, x, mode):
-    """(start, stop) in fx, the line holding the floor, for the cut-in x: x starts at `start`, and with a direct cut
-    fx stops at `stop`, once it has sounded CUT_KEEP under x (pauses don't count). The start is OVERLAP[mode] before
-    fx ends, or the latest earlier one (see TOGETHER) where both are heard together long enough; failing that, the one
-    where they are heard together longest. Never before halfway through fx."""
+    """Where in fx, the line holding the floor, the cut-in x starts (in samples); see OVERLAP. Failing `together`,
+    the start where both are heard together longest."""
+    late, early, together = OVERLAP[mode]
     a, b = _loud(fx), _loud(x)
-    half = len(a) // 2
-    best = (-1, 0, len(fx))
-    first, last = (max(half, len(a) - round(s * PER_S)) for s in (OVERLAP[mode], EARLIEST))
+    first, last = (max(len(a) // 2, len(a) - round(t * PER_S)) for t in (late, early))
+    best = (-1, 0)
     for j in range(first, last - 1, -1):
-        spoken = np.flatnonzero(np.cumsum(a[j:]) >= CUT_KEEP * PER_S) if mode == "cut" else []
-        e = j + spoken[0] + 1 if len(spoken) else len(a)
-        m = min(e - j, len(b))
+        m = min(len(a) - j, len(b))
         both = int((a[j:j + m] & b[:m]).sum())
         if both > best[0]:
-            best = (both, j * FRAME, e * FRAME if e < len(a) else len(fx))
-        if both >= TOGETHER * PER_S:
+            best = (both, j * FRAME)
+        if both >= together * PER_S:
             break
-    return best[1:]
+    return best[1]
+
+
+def modes(lines):
+    """lines: [(mode, text)] in script order -> the mode each line is mixed with. A cut-in or talk-over overlaps only
+    a line the script cut off with a dash; after a finished line, such as a question, it waits like any reply."""
+    out, floor = [], ""
+    for mode, text in lines:
+        out.append("" if mode in OVERLAP and not floor.rstrip().endswith(CUT_OFF) else mode)
+        floor = text if mode != "backchannel" else floor
+    return out
 
 
 def _pause_near(x, at, earliest):
@@ -111,8 +116,8 @@ def pauses(lines, seed):
 def mix(clips, gaps=None):
     """clips: [(segment, mode, samples)] in script order -> (track, spans), spans[i] = (start, end) of clip i in
     seconds. Normal lines follow each other after gaps[i] (default GAP_TURN; negative overlaps the last line's end).
-    A backchannel plays in a pause of the line holding the floor, which carries on. A cut-in starts before that line
-    ends, and the line then stops dead (cut) or fades out underneath (fade). Nothing overlaps across segments."""
+    A backchannel plays in a pause of the line holding the floor, which carries on. A cut-in overlaps the last words
+    of that line, which plays to its end (cut) or fades out underneath (fade). Nothing overlaps across segments."""
     placed, floor, end, seg0 = [], None, 0, None  # placed: [(start sample, samples)]; floor: index into placed
     bc_from = 0  # the next backchannel starts after the last one on the same line ends
     for i, (seg, mode, x) in enumerate(clips):
@@ -127,15 +132,11 @@ def mix(clips, gaps=None):
             continue
         if mode in OVERLAP and floor is not None:
             fs, fx = placed[floor]
-            k, keep = _cut_in(fx, x, mode)
-            fx = fx.copy()
-            if mode == "cut":
-                ramp = min(keep, int(0.02 * RATE))  # 20 ms, so the stop does not click
-                fx = fx[:keep]
-                fx[keep - ramp:] *= np.linspace(1, 0, ramp)
-            else:
+            k = _cut_in(fx, x, mode)
+            if mode == "fade":
+                fx = fx.copy()
                 fx[k:] *= np.minimum(1, np.linspace(2, 0, len(fx) - k))  # both at full for half the overlap, then out
-            placed[floor] = (fs, fx)
+                placed[floor] = (fs, fx)
             start = fs + k
         elif not placed:
             start = 0

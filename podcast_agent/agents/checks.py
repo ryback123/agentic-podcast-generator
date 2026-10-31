@@ -5,7 +5,7 @@ import re
 import unicodedata
 from collections import Counter
 
-from ..episode import TAGS
+from ..episode import CUT_OFF, TAGS
 from ..languages import LANGS, SCRIPTS, chars_per_min
 
 LATIN_SHARE = {"light": (0.02, 0.15), "medium": (0.08, 0.35), "heavy": (0.25, 0.60)}  # share of English words
@@ -71,11 +71,16 @@ def check_segment(turns, bad, lang, code_mix, budget_chars, history):
     name, script, _ = LANGS[lang]
     issues = [f"Not a valid dialogue line (use NAME: text with the cast names, no markdown): {b[:80]!r}"
               for b in bad[:5]]
-    floor = None  # speaker of the last line that holds the floor (not a backchannel)
+    floor, held = None, 0  # speaker and number of the last line that holds the floor (not a backchannel)
     for k, (sp, tx, mode) in enumerate(turns, 1):
         if mode and floor in (None, sp):
             issues.append(f"Line {k}: a ({TAGS[mode]}) line must come right after a line by another speaker in this "
                           f"segment; make it a normal line.")
+        elif mode in ("cut", "fade") and not turns[held - 1][1].rstrip().endswith(CUT_OFF):
+            issues.append(f"Line {k} {TAGS[mode]}, but line {held} is a finished sentence, so the audio plays line {k} "
+                          f"as an ordinary reply. Cut line {held} off mid-sentence with a dash (—), for example by "
+                          f"dropping its last words.")
+        held = k if mode != "backchannel" else held
         if mode == "backchannel" and len(words(tx)) > MAX_BACKCHANNEL_WORDS:
             issues.append(f"Line {k}: a backchannel is a word or two; shorten it or make it a normal line.")
         floor = sp if mode != "backchannel" else floor

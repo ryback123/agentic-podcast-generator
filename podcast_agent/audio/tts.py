@@ -21,7 +21,7 @@ from openai import OpenAI
 
 from ..config import TTS_API_KEY, TTS_BASE_URL, TTS_MODEL as MODEL, TTS_VOICE_INFO
 from ..episode import log
-from .mix import RATE, load_clip, mix, normalize, pauses
+from .mix import RATE, load_clip, mix, modes, normalize, pauses
 
 # retries back off on rate limits (Bodhan allowed 4 requests a minute per key in 2026-09) and server errors
 _client = OpenAI(base_url=TTS_BASE_URL, api_key=TTS_API_KEY, timeout=600, max_retries=6) if TTS_BASE_URL else None
@@ -118,8 +118,9 @@ def stitch(ep, speed=1.0):
     in script order) and where each segment starts (chapters), for the Audio tab and the MP3's chapters."""
     run = Path(ep["dir"])
     all_lines = lines(ep)
-    gaps = pauses([(ln["speaker"], ln["mode"]) for ln in all_lines], (ep.get("request") or {}).get("seed", 0))
-    audio, spans = mix([(ln["segment"], ln["mode"], load_clip(run / ln["file"], speed)) for ln in all_lines], gaps)
+    heard = modes([(ln["mode"], ln["text"]) for ln in all_lines])
+    gaps = pauses([(ln["speaker"], m) for ln, m in zip(all_lines, heard)], (ep.get("request") or {}).get("seed", 0))
+    audio, spans = mix([(ln["segment"], m, load_clip(run / ln["file"], speed)) for ln, m in zip(all_lines, heard)], gaps)
     raw = run / "episode.part.wav"
     with wave.open(str(raw), "wb") as w:
         w.setnchannels(1)
