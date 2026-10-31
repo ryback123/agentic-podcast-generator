@@ -64,11 +64,24 @@ def test_settings_are_checked_and_kept(tmp_path, monkeypatch):
     assert settings.load() == settings.DEFAULTS
     for bad in ({"lang": "xx"}, {"speakers": 9}, {"speakers": True}, {"minutes": 12.5}, {"review_rounds": 5},
                 {"research_steps": 2}, {"web_search": "yes"}, {"voice_male": 3}, {"speed": 2}, {"speed": 0.8},
-                {"speed": "fast"}, {"speed": True}):
+                {"speed": "fast"}, {"speed": True}, {"model": 4}, {"model": "a model; rm -rf"}):
         with pytest.raises(ValueError):
             settings.save(bad)
     saved = settings.save({"lang": "ta", "review_rounds": 0, "web_search": False, "speed": 1.15, "api_key": "dropped"})
     assert settings.load() == saved and "api_key" not in saved and saved["speakers"] == 2 and saved["speed"] == 1.15
+
+
+def test_the_model_is_chosen_in_settings(tmp_path, monkeypatch):
+    from podcast_agent import llm
+    monkeypatch.setattr(settings, "RUNS", tmp_path)
+    monkeypatch.setattr(web, "models", lambda: [{"id": "google/gemma-4-31b-it"}, {"id": "google/gemini-2.5-flash"}])
+    monkeypatch.setattr(llm, "MODEL", llm.MODEL)  # put back after the test
+    c = TestClient(web.app)
+    assert "no model called 'gpt-9'" in c.put("/api/settings", json={"model": "gpt-9"}).json()["detail"]
+    assert c.put("/api/settings", json={"model": "google/gemini-2.5-flash"}).json()["model"] == "google/gemini-2.5-flash"
+    assert llm.MODEL == "google/gemini-2.5-flash"  # the next model call uses it
+    c.put("/api/settings", json={"model": ""})
+    assert llm.MODEL == web.LLM_MODEL  # empty: the server's own model
 
 
 def test_delete_moves_to_trash_and_duplicate_copies_the_request(tmp_path, monkeypatch):

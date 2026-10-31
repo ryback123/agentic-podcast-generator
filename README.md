@@ -73,7 +73,8 @@ far each got) and in a bottom tab bar on a phone:
   are being made. An episode's page has Duplicate (the same request, planned afresh) and Delete, which moves its folder
   to `.trash/` in the episodes folder.
 - **Voices:** a sample of each TTS voice, and the default voice for female and male speakers.
-- **Settings:** defaults for new episodes, the research step budget, review rounds per segment, web search on or off,
+- **Settings:** defaults for new episodes, the model every agent uses (type any model the model service offers;
+  with OpenRouter it shows the price and about what an episode costs), the research step budget, review rounds per segment, web search on or off,
   audio speed (applied when an episode's audio is built, pitch unchanged), light or dark, and whether the model, web search and TTS are working. Saved in `settings.json` in the episodes
   folder; server addresses and keys stay in the environment.
 

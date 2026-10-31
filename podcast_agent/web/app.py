@@ -18,7 +18,7 @@ from fastapi.staticfiles import StaticFiles
 from .. import document, edits, llm, pipeline
 from ..agents import producer, researcher, writer
 from ..audio import tts
-from ..config import RUNS, TAVILY_API_KEY, TTS_VOICE_INFO, TTS_VOICES
+from ..config import LLM_MODEL, RUNS, TAVILY_API_KEY, TTS_VOICE_INFO, TTS_VOICES
 from ..episode import load, new_episode, script_json, script_text, update_stats
 from ..languages import CODE_MIX, LANGS
 from . import settings
@@ -47,7 +47,7 @@ def segment_index(ep, i):
 @app.get("/api/config")
 def config():
     return {"languages": [{"code": c, "name": n, "script": s} for c, (n, s, _) in LANGS.items()],
-            "code_mix": list(CODE_MIX), "model": llm.MODEL,
+            "code_mix": list(CODE_MIX), "model": llm.MODEL, "default_model": LLM_MODEL,
             "tts": {"configured": tts.configured(), "voices": TTS_VOICES, "voice_info": TTS_VOICE_INFO, "model": tts.MODEL}}
 
 
@@ -154,10 +154,46 @@ def get_settings():
 
 @app.put("/api/settings")
 def put_settings(body: dict = Body(...)):
+    known = {m["id"] for m in models()}
+    if body.get("model") and known and body["model"] not in known:
+        raise HTTPException(400, f"the model service has no model called {body['model']!r}")
     try:
-        return settings.save(body)
+        s = settings.save(body)
     except ValueError as e:
         raise HTTPException(400, str(e))
+    use_model(s)
+    return s
+
+
+def use_model(s):
+    """The model in Settings, or the server's LLM_MODEL when none is set, for every model call from now on (llm.chat
+    reads llm.MODEL at each call; a job already running switches at its next call)."""
+    llm.MODEL = s["model"] or LLM_MODEL
+
+
+try:
+    use_model(settings.load())
+except ValueError:  # a damaged settings.json: the server's model, and the Settings tab reports the file
+    pass
+_models = {"at": 0, "list": []}
+
+
+@app.get("/api/models")
+def models():
+    """The models the endpoint offers, for the Settings tab: id, context length and, where the endpoint says (as
+    OpenRouter does), dollars per million tokens in and out. Asked again after an hour; [] if it can't be reached."""
+    if time.time() - _models["at"] > 3600:
+        try:
+            raw = llm._client.with_options(timeout=10, max_retries=0).models.list().data
+        except Exception:  # the Settings tab shows the model service's state from /api/status
+            return []
+        per_m = lambda v: round(float(v) * 1e6, 3) if v not in (None, "") else None  # noqa: E731
+        _models["list"] = sorted(({"id": m.id, "context": (m.model_extra or {}).get("context_length"),
+                                   "price_in": per_m(((m.model_extra or {}).get("pricing") or {}).get("prompt")),
+                                   "price_out": per_m(((m.model_extra or {}).get("pricing") or {}).get("completion"))}
+                                  for m in raw), key=lambda m: m["id"])
+        _models["at"] = time.time()
+    return _models["list"]
 
 
 @app.get("/api/status")

@@ -26,7 +26,7 @@ def chat(prompt, agent, temperature=0.7, max_tokens=4000, log=None):
         raise ValueError(f"{agent}: the model returned no reply")
     out, finish = r.choices[0].message.content or "", r.choices[0].finish_reason
     if log:
-        rec = {"agent": agent, "prompt": prompt, "output": out, "finish": finish,
+        rec = {"agent": agent, "model": MODEL, "prompt": prompt, "output": out, "finish": finish,
                "tokens_in": r.usage and r.usage.prompt_tokens, "tokens_out": r.usage and r.usage.completion_tokens,
                "seconds": round(time.time() - t, 1)}
         with _lock, open(log, "a") as f:

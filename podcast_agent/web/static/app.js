@@ -420,6 +420,10 @@ function renderSettings() {
         ${mixBox(s.code_mix, s.lang)}
       </div></section>
     <section class="panel"><h2>Agents</h2><p class="hint">Used by every job that starts from now on.</p>
+      <label class="f"><span>Model</span>
+        <input type="text" name="model" list="models" value="${esc(s.model)}" placeholder="${esc(CFG.default_model)}"
+          spellcheck="false" autocomplete="off" autocapitalize="off"><datalist id="models"></datalist></label>
+      <p class="hint" id="modelhint">${modelHint(s.model)}</p>
       <div class="row">
         ${stepper("research_steps", "Research steps", 4, 40, s.research_steps, "", "Fewer steps", "More steps")}
         ${stepper("review_rounds", "Review rounds per segment", 0, 3, s.review_rounds, "", "Fewer rounds", "More rounds")}
@@ -451,11 +455,35 @@ function renderSettings() {
     box.removeAttribute("aria-busy");
   });
   api("GET", "/api/settings").then((fresh) => { SETTINGS = fresh; }).catch(() => {}); // current for the next save
+  api("GET", "/api/models").then((list) => { // suggestions while typing, and each one's price
+    MODELS = list;
+    const dl = $("#models"), form = $("#settingsform");
+    if (!dl || !form) return;
+    dl.innerHTML = list.map((m) => `<option value="${esc(m.id)}"></option>`).join("");
+    $("#modelhint").innerHTML = modelHint(form.model.value);
+  }).catch(() => {});
+}
+// What a model costs, for the hint under the Model box. An episode is about 0.25 M tokens in and 0.025 M out (from
+// call logs of real episodes, 75-130 calls each); prices come from the model service where it gives them (OpenRouter).
+let MODELS = [];
+function modelHint(id) {
+  const typed = id.trim(), m = MODELS.find((x) => x.id === (typed || CFG.default_model));
+  const fallback = `Empty uses the server's default, ${esc(CFG.default_model)}.`;
+  if (typed && MODELS.length && !m) {
+    return `<b>The model service has no model called ${esc(typed)}.</b> Type part of a name to see what it offers.`;
+  }
+  if (!m || m.price_in == null) return `${fallback} Type part of a name to see what the model service offers.`;
+  const usd = (v) => `$${v.toFixed(v < 0.1 ? 3 : 2)}`, ep = 0.25 * m.price_in + 0.025 * m.price_out;
+  const ctx = m.context >= 1e6 ? `${Math.round(m.context / 1e6)}M` : `${Math.round(m.context / 1000)}k`;
+  const cost = m.price_in + m.price_out === 0
+    ? "free, but free models allow few calls a day and an episode makes 75 to 130"
+    : `${usd(m.price_in)} in and ${usd(m.price_out)} out per million tokens, about ${ep < 0.01 ? "under a cent" : `$${ep.toFixed(2)}`} an episode`;
+  return `${esc(m.id)}: ${cost}${m.context ? `; reads up to ${ctx} tokens at once` : ""}. ${fallback}`;
 }
 async function saveSettings(form) {
   const body = { ...SETTINGS, lang: form.lang.value, speakers: +form.speakers.value, minutes: +form.minutes.value,
     code_mix: form.code_mix.value, research_steps: +form.research_steps.value, review_rounds: +form.review_rounds.value,
-    web_search: form.web_search.checked, speed: +form.speed.value };
+    web_search: form.web_search.checked, speed: +form.speed.value, model: form.model.value.trim() };
   try {
     SETTINGS = await api("PUT", "/api/settings", body);
     toast("Settings saved");
@@ -1071,6 +1099,7 @@ document.addEventListener("input", (e) => {
   const t = e.target;
   if (t.matches("textarea.auto")) autosize(t);
   if (t.form?.id === "newform") updateNewForm(t.form);
+  if (t.name === "model" && t.form?.id === "settingsform") $("#modelhint").innerHTML = modelHint(t.value);
   if (t.id === "find-q") { FIND.q = t.value; SHOWN = 24; fillCovers(); }
   if (t.matches(".seek")) { const a = $(".player audio"); a.currentTime = +t.value; follow(a); }
   const sh = t.closest(".sheet");

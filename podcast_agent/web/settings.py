@@ -2,6 +2,7 @@
 Server addresses and API keys stay in the environment (config.py) and never reach the page."""
 import json
 import os
+import re
 
 from ..config import RUNS
 from ..languages import CODE_MIX, LANGS
@@ -11,6 +12,7 @@ DEFAULTS = {
     "research_steps": 20, "review_rounds": 2, "web_search": True,  # agent limits, read when a job starts
     "voice_female": "", "voice_male": "",  # default voices in the Audio step; "" = the first free one
     "speed": 1.0,  # audio speed-up, applied when an episode track is built (audio/mix.py load_clip)
+    "model": "",  # the model every agent uses, as the endpoint names it; "" = the server's LLM_MODEL
 }
 
 
@@ -28,7 +30,8 @@ def check(s):
           "web_search": type(out["web_search"]) is bool,
           "speed": type(out["speed"]) in (int, float) and 1 <= out["speed"] <= 1.5,
           "voice_female": isinstance(out["voice_female"], str) and len(out["voice_female"]) <= 100,
-          "voice_male": isinstance(out["voice_male"], str) and len(out["voice_male"]) <= 100}
+          "voice_male": isinstance(out["voice_male"], str) and len(out["voice_male"]) <= 100,
+          "model": isinstance(out["model"], str) and bool(re.fullmatch(r"[\w.:/@-]{0,200}", out["model"]))}
     if bad := next((k for k, good in ok.items() if not good), None):
         raise ValueError(f"bad setting {bad}: {out[bad]!r}")
     return out
